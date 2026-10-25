@@ -1,15 +1,19 @@
 package bot
 
 import (
-	"bot-wa/internal/config"
+	"context"
 	"sync"
 
+	"bot-wa/internal/config"
+
 	"github.com/rs/zerolog/log"
+	"go.mau.fi/whatsmeow"
 	"go.mau.fi/whatsmeow/types"
 )
 
 type AccessControl struct {
 	cfg        *config.Config
+	client     *whatsmeow.Client
 	owners     map[string]bool
 	allowed    map[string]bool
 	groups     map[string]bool
@@ -17,15 +21,15 @@ type AccessControl struct {
 	mu         sync.RWMutex
 }
 
-func NewAccessControl(cfg *config.Config) *AccessControl {
+func NewAccessControl(cfg *config.Config, client *whatsmeow.Client) *AccessControl {
 	owners := make(map[string]bool)
 	for _, num := range cfg.OwnerNumbers {
-		owners[num] = true
+		owners[CleanPhoneNumber(num)] = true
 	}
 
 	allowed := make(map[string]bool)
 	for _, num := range cfg.AllowedNumbers {
-		allowed[num] = true
+		allowed[CleanPhoneNumber(num)] = true
 	}
 
 	groups := make(map[string]bool)
@@ -35,6 +39,7 @@ func NewAccessControl(cfg *config.Config) *AccessControl {
 
 	return &AccessControl{
 		cfg:        cfg,
+		client:     client,
 		owners:     owners,
 		allowed:    allowed,
 		groups:     groups,
@@ -47,6 +52,10 @@ func (ac *AccessControl) RegisterLID(lid, phone string) {
 	if lid == "" || phone == "" {
 		return
 	}
+	phone = CleanPhoneNumber(phone)
+	if phone == "" {
+		return
+	}
 	ac.mu.Lock()
 	defer ac.mu.Unlock()
 	ac.lidToPhone[lid] = phone
@@ -56,13 +65,32 @@ func (ac *AccessControl) ResolvePhone(jid types.JID) string {
 	if jid.Server == types.DefaultUserServer {
 		return CleanPhoneNumber(jid.User)
 	}
-
-	ac.mu.RLock()
-	defer ac.mu.RUnlock()
-	if phone, ok := ac.lidToPhone[jid.User]; ok {
-		return phone
+	if jid.Server != types.HiddenUserServer {
+		return ""
 	}
-	return ""
+
+	// Prefer a mapping already learned by this process.
+	ac.mu.RLock()
+	phone, ok := ac.lidToPhone[jid.User]
+	ac.mu.RUnlock()
+	if ok && phone != "" {
+		return CleanPhoneNumber(phone)
+	}
+
+	// whatsmeow persists LID <-> phone JID mappings in the device store.
+	// Use that source so access checks work after a bot restart too.
+	if ac.client == nil || ac.client.Store == nil || ac.client.Store.LIDs == nil {
+		return ""
+	}
+	phoneJID, err := ac.client.Store.LIDs.GetPNForLID(context.Background(), jid)
+	if err != nil {
+		log.Debug().Str("sender", MaskJID(jid)).Err(err).Msg("Gagal menyelesaikan WhatsApp LID ke nomor telepon")
+		return ""
+	}
+	if phoneJID.Server != types.DefaultUserServer || phoneJID.User == "" {
+		return ""
+	}
+	return CleanPhoneNumber(phoneJID.User)
 }
 
 func (ac *AccessControl) IsOwner(sender types.JID) bool {
@@ -88,13 +116,6 @@ func (ac *AccessControl) IsAllowed(sender, chat types.JID) (bool, bool) {
 	}
 
 	phone := ac.ResolvePhone(sender)
-	if phone == "" {
-		// If it's a direct user server, phone is directly sender.User
-		if sender.Server == types.DefaultUserServer {
-			phone = CleanPhoneNumber(sender.User)
-		}
-	}
-
 	if phone == "" {
 		log.Warn().Str("sender", MaskJID(sender)).Msg("Tidak dapat mengidentifikasi nomor pengirim; pesan diabaikan")
 		return false, false
