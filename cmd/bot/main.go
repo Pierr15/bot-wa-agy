@@ -4,6 +4,8 @@ import (
 	"context"
 	"os"
 	"os/signal"
+	"os/exec"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
@@ -74,6 +76,9 @@ func main() {
 		log.Fatal().Err(err).Msg("Gagal menyambungkan client WhatsApp")
 	}
 
+	// Watch main for updates only after WhatsApp is connected.
+	go watchForUpdates(ctx, client, cfg.DataDir)
+
 	// 5. Handle graceful shutdown
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
@@ -82,4 +87,59 @@ func main() {
 	log.Info().Str("signal", sig.String()).Msg("Menerima sinyal shutdown, menghentikan bot secara rapi...")
 	client.Stop()
 	log.Info().Msg("Bot berhasil dihentikan")
+}
+
+func watchForUpdates(ctx context.Context, client *bot.BotClient, dataDir string) {
+	select {
+	case <-client.Connected():
+	case <-ctx.Done():
+		return
+	}
+	ticker := time.NewTicker(2 * time.Minute)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+		}
+		appDir, err := os.Getwd()
+		if err != nil { log.Warn().Err(err).Msg("Auto-update: gagal membaca direktori aplikasi"); continue }
+		fetch := exec.CommandContext(ctx, "git", "-C", appDir, "fetch", "origin", "main")
+		if output, err := fetch.CombinedOutput(); err != nil {
+			log.Warn().Err(err).Str("output", strings.TrimSpace(string(output))).Msg("Auto-update: gagal memeriksa origin/main"); continue
+		}
+		local := exec.CommandContext(ctx, "git", "-C", appDir, "rev-parse", "HEAD")
+		localOut, err := local.Output()
+		if err != nil { log.Warn().Err(err).Msg("Auto-update: gagal membaca commit lokal"); continue }
+		remote := exec.CommandContext(ctx, "git", "-C", appDir, "rev-parse", "origin/main")
+		remoteOut, err := remote.Output()
+		if err != nil { log.Warn().Err(err).Msg("Auto-update: gagal membaca commit remote"); continue }
+		if strings.TrimSpace(string(localOut)) == strings.TrimSpace(string(remoteOut)) { continue }
+
+		log.Info().Msg("Auto-update: commit baru terdeteksi; mengumumkan maintenance")
+		bctx, cancel := context.WithTimeout(ctx, 45*time.Second)
+		sent, err := client.Broadcast(bctx, "🛠️ *MAINTENANCE BERLANGSUNG*\n\nUpdate otomatis sedang dipasang. Bot akan tersambung kembali setelah proses selesai.")
+		cancel()
+		if err != nil || sent == 0 {
+			log.Warn().Err(err).Int("sent", sent).Msg("Auto-update dibatalkan: pengumuman maintenance tidak terkirim")
+			continue
+		}
+
+		marker := filepath.Join(dataDir, "autoupdate-pending")
+		cmd := exec.CommandContext(ctx, "bash", filepath.Join(appDir, "scripts", "termux", "update.sh"))
+		cmd.Dir = appDir
+		cmd.Env = append(os.Environ(), "APP_DIR="+appDir, "BOT_AUTO_UPDATE=1", "UPDATE_MARKER="+marker)
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			log.Error().Err(err).Str("output", strings.TrimSpace(string(output))).Msg("Auto-update gagal; versi aktif dipertahankan")
+			bctx, cancel = context.WithTimeout(context.Background(), 45*time.Second)
+			_, _ = client.Broadcast(bctx, "⚠️ *UPDATE DITUNDA*\n\nUpdate otomatis gagal atau dibatalkan. Bot tetap berjalan dengan versi sebelumnya.")
+			cancel()
+			continue
+		}
+		log.Info().Str("output", strings.TrimSpace(string(output))).Msg("Auto-update berhasil; meminta runit memulai ulang bot")
+		if p, err := os.FindProcess(os.Getpid()); err == nil { _ = p.Signal(syscall.SIGTERM) }
+		return
+	}
 }

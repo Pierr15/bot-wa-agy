@@ -65,6 +65,10 @@ func NewRouter(cfg *config.Config, client *whatsmeow.Client, access *AccessContr
 	return r
 }
 
+func (r *Router) Broadcast(ctx context.Context, text string) (int, error) {
+	return r.admin.Broadcast(ctx, text)
+}
+
 func (r *Router) HandleMessage(evt *events.Message) {
 	if evt.Info.IsFromMe {
 		return

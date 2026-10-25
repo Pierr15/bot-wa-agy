@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"bot-wa/internal/config"
@@ -26,6 +27,8 @@ type BotClient struct {
 	router *Router
 	access *AccessControl
 	invites *invite.Service
+	connected chan struct{}
+	connectedOnce sync.Once
 }
 
 func whatsmeowLogLevel(level string) string {
@@ -84,6 +87,7 @@ func NewBotClient(ctx context.Context, cfg *config.Config) (*BotClient, error) {
 		router: router,
 		access: access,
 		invites: invites,
+		connected: make(chan struct{}),
 	}
 
 	client.AddEventHandler(bot.EventHandler)
@@ -141,6 +145,12 @@ func (b *BotClient) Start(ctx context.Context) error {
 	return b.client.Connect()
 }
 
+func (b *BotClient) Connected() <-chan struct{} { return b.connected }
+
+func (b *BotClient) Broadcast(ctx context.Context, text string) (int, error) {
+	return b.router.Broadcast(ctx, text)
+}
+
 func (b *BotClient) Stop() {
 	b.client.Disconnect()
 	if b.invites != nil {
@@ -152,7 +162,21 @@ func (b *BotClient) EventHandler(evt interface{}) {
 	switch v := evt.(type) {
 	case *events.Connected:
 		log.Info().Msg("WhatsApp terhubung!")
+		b.connectedOnce.Do(func() { close(b.connected) })
 		_ = os.Remove(filepath.Join(b.cfg.DataDir, "qr.txt"))
+		marker := filepath.Join(b.cfg.DataDir, "autoupdate-pending")
+		if _, err := os.Stat(marker); err == nil {
+			go func() {
+				ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
+				defer cancel()
+				sent, err := b.Broadcast(ctx, "✅ *MAINTENANCE SELESAI*\n\nUpdate berhasil dipasang dan bot sudah tersambung kembali. Silakan gunakan bot seperti biasa.")
+				if err != nil || sent == 0 {
+					log.Warn().Err(err).Int("sent", sent).Msg("Pengumuman maintenance selesai belum terkirim; marker dipertahankan")
+					return
+				}
+				if err := os.Remove(marker); err != nil { log.Warn().Err(err).Msg("Gagal menghapus marker maintenance") }
+			}()
+		}
 
 	case *events.Disconnected:
 		log.Warn().Msg("Koneksi WhatsApp terputus; whatsmeow akan mencoba menyambungkan kembali jika memungkinkan.")

@@ -55,7 +55,12 @@ if ! mv -f "$TEMP_BINARY" "$APP_DIR/bot-wa"; then
   exit 1
 fi
 
-if command -v sv >/dev/null 2>&1; then
+if [ "${BOT_AUTO_UPDATE:-0}" = "1" ]; then
+  MARKER="${UPDATE_MARKER:-$APP_DIR/data/autoupdate-pending}"
+  mkdir -p "$(dirname "$MARKER")"
+  printf '%s\n' "$(git rev-parse HEAD)" > "$MARKER"
+  echo "Auto-update siap; marker maintenance dibuat. Service manager akan memulai ulang proses."
+elif command -v sv >/dev/null 2>&1; then
   echo "Merestart service $SERVICE..."
   if ! sv restart "$SERVICE"; then
     echo "Restart gagal. Memulihkan biner dan source..." >&2
