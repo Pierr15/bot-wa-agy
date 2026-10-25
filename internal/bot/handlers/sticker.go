@@ -96,7 +96,7 @@ func (h *StickerHandler) HandleTextSticker(ctx context.Context, evt *events.Mess
 	}
 	defer os.RemoveAll(workDir)
 
-	webpData, err := sticker.CreateStickerWebP(ctx, nil, zones, h.cfg.FontPath, h.cfg.FfmpegPath, workDir)
+	webpData, err := sticker.CreateBratStickerWebP(ctx, zones, h.cfg.FontPath, h.cfg.FfmpegPath, workDir)
 	if err != nil {
 		return fmt.Errorf("gagal membuat stiker teks: %w", err)
 	}
