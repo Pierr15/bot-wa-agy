@@ -60,13 +60,26 @@ func NewBotClient(ctx context.Context, cfg *config.Config) (*BotClient, error) {
 	client := whatsmeow.NewClient(deviceStore, clientLog)
 
 	access := NewAccessControl(cfg, client)
-	router := NewRouter(cfg, client, access)
+	invites, err := invite.Open(cfg.DataDir)
+	if err != nil {
+		return nil, fmt.Errorf("gagal menginisialisasi database undangan: %w", err)
+	}
+	allowedNumbers, err := invites.AllowedNumbers(ctx)
+	if err != nil {
+		_ = invites.Close()
+		return nil, fmt.Errorf("gagal memuat whitelist persisten: %w", err)
+	}
+	for _, number := range allowedNumbers {
+		access.AddAllowed(number)
+	}
+	router := NewRouter(cfg, client, access, invites)
 
 	bot := &BotClient{
 		cfg:    cfg,
 		client: client,
 		router: router,
 		access: access,
+		invites: invites,
 	}
 
 	client.AddEventHandler(bot.EventHandler)
@@ -126,6 +139,9 @@ func (b *BotClient) Start(ctx context.Context) error {
 
 func (b *BotClient) Stop() {
 	b.client.Disconnect()
+	if b.invites != nil {
+		_ = b.invites.Close()
+	}
 }
 
 func (b *BotClient) EventHandler(evt interface{}) {
