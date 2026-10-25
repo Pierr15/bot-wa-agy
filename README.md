@@ -11,7 +11,7 @@ Dirancang khusus untuk berjalan stabil 24/7 di **HP Android (Termux)** dengan ko
 - **Stiker Meme Indonesia**:
   - Foto + caption `.s` → Stiker WebP 512×512 (≤100 KB) dengan gaya meme teks putih outline hitam tebal.
   - Teks atas/bawah/tengah via pipe (`.s TEKS BAWAH | TEKS ATAS`) atau prefix (`.s atas: ...`, `.s bawah: ...`).
-  - `.t TEKS` → Stiker teks di atas dasar putih polos.
+  - `.t TEKS` → Stiker teks minimalis bergaya Brat: teks hitam lowercase, rata tengah, latar putih.
   - Video/GIF + `.s` → Stiker animasi WebP (maks 6 detik, ≤300 KB) dengan pipeline FFmpeg 2-pass cepat (hemat CPU/baterai).
   - Reply foto/video yang sudah terkirim dengan `.s` untuk memprosesnya.
 - **Downloader TikTok & Instagram**:
@@ -121,7 +121,7 @@ tail -f ~/.local/share/wa-bot/log/current   # Pantau log secara realtime
 | Perintah | Fungsi |
 | :--- | :--- |
 | `.s [TEKS]` | Buat stiker dari foto/video (bawah / `\|` atas / dua zona) |
-| `.t <TEKS>` | Buat stiker teks murni berlatar putih |
+| `.t <TEKS>` | Buat stiker teks minimalis gaya Brat berlatar putih |
 | `.v` | Kirim video dari download terakhir |
 | `.a` | Ekstrak audio dari download terakhir |
 | `.f [N]` | Kirim semua foto atau foto ke-N dari download terakhir |
@@ -129,4 +129,4 @@ tail -f ~/.local/share/wa-bot/log/current   # Pantau log secara realtime
 | `.ping` | Cek status aktif bot |
 | `.stat` | Cek uptime, RAM, disk, & spek sistem (*khusus owner*) |
 | `.id` | Cek JID chat & pengirim (*khusus owner*) |
-| `.bc <teks>` | Siarkan pesan ke seluruh nomor whitelist (*khusus owner*) |
+| `.bc <teks>` | Siarkan pesan custom (*khusus owner*) |\n| `.bc upcoming [detail]` | Template pengumuman maintenance mendatang (*khusus owner*) |\n| `.bc maintenance [detail]` | Template maintenance berlangsung (*khusus owner*) |\n| `.bc ends [detail]` | Template maintenance selesai (*khusus owner*) |\n| `.token create [max_use] [durasi]` | Buat token undangan, contoh `.token create 4 30h` (*khusus owner*) |\n| `.init_TOKEN` | Redeem token dalam format yang bisa dipakai di link WhatsApp |
