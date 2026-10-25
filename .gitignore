@@ -1,0 +1,21 @@
+# Binaries
+*.exe
+bot-wa
+bot-wa-arm64
+
+# Config & Credentials
+.env
+data/auth/
+data/cookies/
+data/qr.txt
+
+# Temp & Logs
+data/tmp/
+logs/
+*.log
+
+# OS & Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
