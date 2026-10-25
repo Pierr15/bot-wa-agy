@@ -42,7 +42,7 @@ func NewBotClient(ctx context.Context, cfg *config.Config) (*BotClient, error) {
 	clientLog := waLog.Stdout("WhatsApp", "INFO", true)
 	client := whatsmeow.NewClient(deviceStore, clientLog)
 
-	access := NewAccessControl(cfg)
+	access := NewAccessControl(cfg, client)
 	router := NewRouter(cfg, client, access)
 
 	bot := &BotClient{
