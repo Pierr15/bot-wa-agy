@@ -2,14 +2,17 @@ package bot
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
+	"strconv"
 	"sync"
 	"time"
 
 	"bot-wa/internal/bot/handlers"
 	"bot-wa/internal/config"
 	"bot-wa/internal/downloader"
+	"bot-wa/internal/invite"
 
 	"github.com/rs/zerolog/log"
 	"go.mau.fi/whatsmeow"
@@ -26,12 +29,13 @@ type Router struct {
 	admin      *handlers.AdminHandler
 	sticker    *handlers.StickerHandler
 	downloader *handlers.DownloaderHandler
+	invites *invite.Service
 
 	processedMsg map[string]time.Time
 	procMu       sync.Mutex
 }
 
-func NewRouter(cfg *config.Config, client *whatsmeow.Client, access *AccessControl) *Router {
+func NewRouter(cfg *config.Config, client *whatsmeow.Client, access *AccessControl, invites *invite.Service) *Router {
 	r := &Router{
 		cfg:          cfg,
 		client:       client,
@@ -39,6 +43,7 @@ func NewRouter(cfg *config.Config, client *whatsmeow.Client, access *AccessContr
 		admin:        handlers.NewAdminHandler(cfg, client),
 		sticker:      handlers.NewStickerHandler(cfg, client),
 		downloader:   handlers.NewDownloaderHandler(cfg, client),
+		invites:      invites,
 		processedMsg: make(map[string]time.Time),
 	}
 
@@ -78,20 +83,69 @@ func (r *Router) HandleMessage(evt *events.Message) {
 	chat := evt.Info.Chat
 	sender := evt.Info.Sender
 
-	// Whitelist & Access Check
-	allowed, isOwner := r.access.IsAllowed(sender, chat)
-	if !allowed {
-		return
-	}
-
 	ctx := context.Background()
 	msg := evt.Message
 	if msg == nil {
 		return
 	}
-
 	text := extractText(msg)
 	cleanText := strings.TrimSpace(text)
+
+	// Invitation redemption must be reachable by users not yet on the whitelist.
+	if strings.HasPrefix(cleanText, ".") {
+		cmd, args := parseCommand(cleanText)
+		if cmd == "init" {
+			if chat.Server != types.DefaultUserServer {
+				r.reply(ctx, chat, "Pendaftaran token hanya bisa dilakukan lewat chat pribadi bot.")
+				return
+			}
+			phone := r.access.ResolvePhone(sender)
+			if phone == "" {
+				r.reply(ctx, chat, "Nomor WhatsApp kamu belum bisa diverifikasi. Coba lagi lewat chat pribadi.")
+				return
+			}
+			if r.access.IsOwner(sender) {
+				r.reply(ctx, chat, "Akun owner sudah memiliki akses penuh.")
+				return
+			}
+			allowed, _ := r.access.IsAllowed(sender, chat)
+			if allowed {
+				r.reply(ctx, chat, "Akses kamu sudah aktif. Token tidak digunakan.")
+				return
+			}
+			if args == "" {
+				r.reply(ctx, chat, "Format: .init TOKEN")
+				return
+			}
+			if r.invites == nil {
+				r.reply(ctx, chat, "Fitur pendaftaran sedang tidak tersedia.")
+				return
+			}
+			if err := r.invites.Redeem(ctx, args, phone); err != nil {
+				switch {
+				case errors.Is(err, invite.ErrAlreadyRedeemed):
+					r.reply(ctx, chat, "Nomor ini sudah pernah menggunakan token tersebut.")
+				case errors.Is(err, invite.ErrAlreadyAllowed):
+					r.reply(ctx, chat, "Nomor kamu sudah terdaftar di whitelist.")
+				case errors.Is(err, invite.ErrInvalidToken):
+					r.reply(ctx, chat, "Token tidak valid, kedaluwarsa, dicabut, atau kuotanya habis.")
+				default:
+					log.Error().Err(err).Msg("Gagal memproses token undangan")
+					r.reply(ctx, chat, "Pendaftaran gagal karena masalah penyimpanan. Coba lagi nanti.")
+				}
+				return
+			}
+			r.access.AddAllowed(phone)
+			r.reply(ctx, chat, "✅ Pendaftaran berhasil! Nomor kamu sudah masuk whitelist.")
+			return
+		}
+	}
+
+	// Whitelist & Access Check
+	allowed, isOwner := r.access.IsAllowed(sender, chat)
+	if !allowed {
+		return
+	}
 
 	// 1. Direct Image Message with Caption
 	if msg.ImageMessage != nil {
@@ -157,6 +211,58 @@ func (r *Router) handleCommand(ctx context.Context, evt *events.Message, cmd, ar
 	msgID := evt.Info.ID
 
 	switch cmd {
+	case "token":
+		if !isOwner {
+			r.reply(ctx, chat, "Perintah ini khusus owner.")
+			return
+		}
+		if r.invites == nil {
+			r.reply(ctx, chat, "Database token tidak tersedia.")
+			return
+		}
+		switch {
+		case args == "" || args == "help":
+			r.reply(ctx, chat, "🔐 *Manajemen Token*\n.token create - buat token (5 pendaftaran, 24 jam)\n.token list - lihat token\n.token revoke ID - cabut token")
+		case args == "create":
+			token, t, err := r.invites.Create(ctx, 5, 24*time.Hour)
+			if err != nil {
+				r.reply(ctx, chat, "Gagal membuat token.")
+				log.Error().Err(err).Msg("Gagal membuat token undangan")
+				return
+			}
+			r.reply(ctx, chat, fmt.Sprintf("🔐 *Token Undangan*\nToken: %s\nID: %d\nKuota: %d nomor\nKedaluwarsa: %s UTC", token, t.ID, t.MaxUses, t.ExpiresAt.Format("2006-01-02 15:04:05")))
+		case args == "list":
+			tokens, err := r.invites.List(ctx)
+			if err != nil {
+				r.reply(ctx, chat, "Gagal membaca daftar token.")
+				return
+			}
+			if len(tokens) == 0 {
+				r.reply(ctx, chat, "Belum ada token undangan.")
+				return
+			}
+			var sb strings.Builder
+			sb.WriteString("🔐 *Daftar Token*\n")
+			for _, t := range tokens {
+				status := "aktif"
+				if t.Revoked { status = "dicabut" } else if time.Now().UTC().After(t.ExpiresAt) { status = "kedaluwarsa" } else if t.Uses >= t.MaxUses { status = "habis" }
+				fmt.Fprintf(&sb, "#%d · %s · %d/%d · sampai %s UTC\n", t.ID, status, t.Uses, t.MaxUses, t.ExpiresAt.Format("2006-01-02 15:04"))
+			}
+			r.reply(ctx, chat, sb.String())
+		case strings.HasPrefix(args, "revoke "):
+			id, err := strconv.ParseInt(strings.TrimSpace(strings.TrimPrefix(args, "revoke ")), 10, 64)
+			if err != nil || id < 1 {
+				r.reply(ctx, chat, "Format: .token revoke ID")
+				return
+			}
+			ok, err := r.invites.Revoke(ctx, id)
+			if err != nil { r.reply(ctx, chat, "Gagal mencabut token."); return }
+			if !ok { r.reply(ctx, chat, "ID token tidak ditemukan."); return }
+			r.reply(ctx, chat, fmt.Sprintf("✅ Token #%d berhasil dicabut.", id))
+		default:
+			r.reply(ctx, chat, "Format: .token create | .token list | .token revoke ID")
+		}
+
 	case "s", "stiker", "sticker":
 		quoted := getQuotedMessage(evt.Message)
 		if quoted != nil && quoted.ImageMessage != nil {
