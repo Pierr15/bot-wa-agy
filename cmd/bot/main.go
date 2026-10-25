@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -25,16 +26,22 @@ func main() {
 		log.Fatal().Err(err).Msg("Gagal membaca konfigurasi")
 	}
 
-	// Adjust log level
-	if cfg.LogLevel == "debug" {
-		zerolog.SetGlobalLevel(zerolog.DebugLevel)
-	} else {
-		zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	// Parse LOG_LEVEL instead of treating every non-debug value as info.
+	levelName := strings.ToLower(strings.TrimSpace(cfg.LogLevel))
+	if levelName == "warning" {
+		levelName = "warn"
 	}
+	level, err := zerolog.ParseLevel(levelName)
+	if err != nil {
+		log.Warn().Str("level", cfg.LogLevel).Msg("LOG_LEVEL tidak dikenal; menggunakan info")
+		level = zerolog.InfoLevel
+	}
+	zerolog.SetGlobalLevel(level)
 
 	log.Info().
 		Str("bot", cfg.BotName).
 		Str("loginMode", cfg.LoginMode).
+		Str("logLevel", levelName).
 		Int("owners", len(cfg.OwnerNumbers)).
 		Int("allowed", len(cfg.AllowedNumbers)).
 		Msg("Memulai bot WhatsApp (Go Backend)")
