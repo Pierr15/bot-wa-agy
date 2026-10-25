@@ -58,6 +58,10 @@ func NewBotClient(ctx context.Context, cfg *config.Config) (*BotClient, error) {
 
 	clientLog := waLog.Stdout("WhatsApp", waLevel, true)
 	client := whatsmeow.NewClient(deviceStore, clientLog)
+	// Retry transient network failures even when the first connection attempt fails.
+	// whatsmeow already handles reconnects after unexpected disconnects by default.
+	client.EnableAutoReconnect = true
+	client.InitialAutoReconnect = true
 
 	access := NewAccessControl(cfg, client)
 	invites, err := invite.Open(cfg.DataDir)
@@ -149,6 +153,9 @@ func (b *BotClient) EventHandler(evt interface{}) {
 	case *events.Connected:
 		log.Info().Msg("WhatsApp terhubung!")
 		_ = os.Remove(filepath.Join(b.cfg.DataDir, "qr.txt"))
+
+	case *events.Disconnected:
+		log.Warn().Msg("Koneksi WhatsApp terputus; whatsmeow akan mencoba menyambungkan kembali jika memungkinkan.")
 
 	case *events.LoggedOut:
 		log.Error().Str("reason", v.Reason.String()).Msg("Sesi WhatsApp logout/dikeluarkan! Hapus data/auth/whatsapp.db untuk login baru.")
