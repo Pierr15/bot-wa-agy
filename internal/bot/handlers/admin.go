@@ -32,33 +32,45 @@ func NewAdminHandler(cfg *config.Config, client *whatsmeow.Client) *AdminHandler
 
 func (h *AdminHandler) BuildMenu(isOwner bool) string {
 	var sb strings.Builder
-	sb.WriteString("🤖 *Menu " + h.cfg.BotName + "*\n\n")
 
-	sb.WriteString("📌 *Stiker Meme*\n")
-	sb.WriteString("• Kirim foto dengan caption `.s` → Stiker polos\n")
-	sb.WriteString("• Kirim foto dengan caption `.s TEKS` → Teks bawah\n")
-	sb.WriteString("• Kirim foto dengan caption `.s | TEKS` → Teks atas\n")
-	sb.WriteString("• Kirim foto dengan caption `.s BAWAH | ATAS` → Dua zona\n")
-	sb.WriteString("• Kirim video/GIF (maks " + fmt.Sprintf("%.0f", h.cfg.StickerAnimMaxSec) + "s) caption `.s` → Stiker animasi\n")
-	sb.WriteString("• `.t TEKS` → Stiker teks di dasar putih\n")
-	sb.WriteString("• Reply foto/video yang ada dengan `.s` untuk diproses\n\n")
+	sb.WriteString("🤖 *" + h.cfg.BotName + "*\n")
+	if isOwner {
+		sb.WriteString("👑 _Owner Control Center_\n")
+	} else {
+		sb.WriteString("✨ _Menu Fitur_\n")
+	}
+	sb.WriteString("━━━━━━━━━━━━━━━━━━\n\n")
 
-	sb.WriteString("📥 *Downloader*\n")
-	sb.WriteString("• Kirim link TikTok / Instagram (post/reel/carousel)\n")
-	sb.WriteString("• Reply hasil download dengan:\n")
-	sb.WriteString("  - `.v` : kirim video\n")
-	sb.WriteString("  - `.a` : ekstrak audio musik (m4a)\n")
-	sb.WriteString("  - `.f [N]` : kirim semua foto atau foto ke-N\n\n")
+	sb.WriteString("🎨 *STICKER STUDIO*\n")
+	sb.WriteString("› Kirim foto + caption `.s` → stiker polos\n")
+	sb.WriteString("› `.s TEKS` → teks bawah\n")
+	sb.WriteString("› `.s | TEKS` → teks atas\n")
+	sb.WriteString("› `.s BAWAH | ATAS` → teks dua zona\n")
+	sb.WriteString("› Video/GIF + caption `.s` → stiker animasi (maks. " + fmt.Sprintf("%.0f", h.cfg.StickerAnimMaxSec) + " detik)\n")
+	sb.WriteString("› `.t TEKS` → stiker teks berlatar putih\n")
+	sb.WriteString("💡 _Bisa juga reply foto/video dengan `.s`._\n\n")
 
-	sb.WriteString("⚡ *Utilitas*\n")
-	sb.WriteString("• `.ping` : cek status respon bot\n")
-	sb.WriteString("• `.menu` : tampilkan bantuan ini\n")
+	sb.WriteString("📥 *MEDIA DOWNLOADER*\n")
+	sb.WriteString("› Kirim link TikTok / Instagram (post, reel, atau carousel)\n")
+	sb.WriteString("› Reply hasil download untuk memilih media:\n")
+	sb.WriteString("  • `.v` → kirim video\n")
+	sb.WriteString("  • `.a` → ekstrak audio (.m4a)\n")
+	sb.WriteString("  • `.f` → kirim semua foto\n")
+	sb.WriteString("  • `.f N` → kirim foto ke-N\n\n")
+
+	sb.WriteString("⚡ *QUICK TOOLS*\n")
+	sb.WriteString("› `.ping` → cek respons bot\n")
+	sb.WriteString("› `.menu` → tampilkan menu ini\n")
 
 	if isOwner {
-		sb.WriteString("\n👑 *Menu Khusus Owner*\n")
-		sb.WriteString("• `.stat` : cek uptime, RAM, disk & sistem\n")
-		sb.WriteString("• `.id` : lihat detail JID chat & pengirim\n")
-		sb.WriteString("• `.bc <teks>` : siarkan pesan ke nomor whitelist\n")
+		sb.WriteString("\n━━━━━━━━━━━━━━━━━━\n")
+		sb.WriteString("🛡️ *OWNER TOOLS*\n")
+		sb.WriteString("› `.stat` → uptime, RAM, disk, dan info sistem\n")
+		sb.WriteString("› `.id` → detail JID chat dan pengirim\n")
+		sb.WriteString("› `.bc <pesan>` → siarkan pesan ke owner & whitelist\n")
+		sb.WriteString("\n🔐 _Akses owner aktif_\n")
+	} else {
+		sb.WriteString("\n✨ _Simple • Fast • Easy to use_\n")
 	}
 
 	return sb.String()
