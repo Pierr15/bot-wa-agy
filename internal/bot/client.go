@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"bot-wa/internal/config"
@@ -25,8 +26,22 @@ type BotClient struct {
 	access *AccessControl
 }
 
+func whatsmeowLogLevel(level string) string {
+	switch strings.ToLower(strings.TrimSpace(level)) {
+	case "debug", "trace":
+		return "DEBUG"
+	case "warn", "warning":
+		return "WARN"
+	case "error", "fatal", "panic":
+		return "ERROR"
+	default:
+		return "INFO"
+	}
+}
+
 func NewBotClient(ctx context.Context, cfg *config.Config) (*BotClient, error) {
-	dbLog := waLog.Stdout("Database", "WARN", true)
+	waLevel := whatsmeowLogLevel(cfg.LogLevel)
+	dbLog := waLog.Stdout("Database", waLevel, true)
 	dsn := fmt.Sprintf("file:%s?_pragma=foreign_keys(1)&_pragma=journal_mode(WAL)", cfg.AuthDB)
 
 	container, err := sqlstore.New(ctx, "sqlite", dsn, dbLog)
@@ -39,7 +54,7 @@ func NewBotClient(ctx context.Context, cfg *config.Config) (*BotClient, error) {
 		return nil, fmt.Errorf("gagal memuat device auth: %w", err)
 	}
 
-	clientLog := waLog.Stdout("WhatsApp", "INFO", true)
+	clientLog := waLog.Stdout("WhatsApp", waLevel, true)
 	client := whatsmeow.NewClient(deviceStore, clientLog)
 
 	access := NewAccessControl(cfg, client)
