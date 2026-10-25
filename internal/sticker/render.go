@@ -181,7 +181,7 @@ func CreateBratStickerWebP(ctx context.Context, zones *TextZones, fontPath, ffmp
 	dc.Clear()
 	if zones == nil || !zones.HasText() { return nil, fmt.Errorf("masukkan teks stiker") }
 	if err := dc.LoadFontFace(fontPath, 62); err != nil { return nil, fmt.Errorf("gagal memuat font: %w", err) }
-	text := strings.ToLower(strings.TrimSpace(strings.Join([]string{zones.Top, zones.Center, zones.Bottom}, " ")))
+	text := strings.TrimSpace(strings.Join([]string{zones.Top, zones.Center, zones.Bottom}, " "))
 	maxWidth := float64(StickerSize - 76)
 	lines := dc.WordWrap(text, maxWidth)
 	if len(lines) == 0 { return nil, fmt.Errorf("masukkan teks stiker") }
