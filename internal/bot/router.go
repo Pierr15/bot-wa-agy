@@ -94,6 +94,11 @@ func (r *Router) HandleMessage(evt *events.Message) {
 	// Invitation redemption must be reachable by users not yet on the whitelist.
 	if strings.HasPrefix(cleanText, ".") {
 		cmd, args := parseCommand(cleanText)
+		// Link-friendly form: .init_TOKEN, suitable for wa.me/?text=.init_TOKEN.
+		if strings.HasPrefix(strings.ToLower(cleanText), ".init_") {
+			cmd = "init"
+			args = strings.TrimSpace(cleanText[len(".init_"):])
+		}
 		if cmd == "init" {
 			if chat.Server != types.DefaultUserServer {
 				r.reply(ctx, chat, "Pendaftaran token hanya bisa dilakukan lewat chat pribadi bot.")
@@ -114,7 +119,7 @@ func (r *Router) HandleMessage(evt *events.Message) {
 				return
 			}
 			if args == "" {
-				r.reply(ctx, chat, "Format: .init TOKEN")
+				r.reply(ctx, chat, "Format: .init TOKEN atau .init_TOKEN (untuk link WhatsApp)")
 				return
 			}
 			if r.invites == nil {
@@ -222,15 +227,37 @@ func (r *Router) handleCommand(ctx context.Context, evt *events.Message, cmd, ar
 		}
 		switch {
 		case args == "" || args == "help":
-			r.reply(ctx, chat, "🔐 *Manajemen Token*\n.token create - buat token (5 pendaftaran, 24 jam)\n.token list - lihat token\n.token revoke ID - cabut token")
-		case args == "create":
-			token, t, err := r.invites.Create(ctx, 5, 24*time.Hour)
+			r.reply(ctx, chat, "🔐 *Manajemen Token*\n.token create [max_use] [durasi] - default 5 pendaftaran, 24 jam\nContoh: .token create 4 30h\n.token list - lihat token\n.token revoke ID - cabut token")
+		case strings.HasPrefix(args, "create"):
+			fields := strings.Fields(args)
+			if len(fields) == 0 || fields[0] != "create" || len(fields) > 3 {
+				r.reply(ctx, chat, "Format: .token create [max_use] [durasi]\nContoh: .token create 4 30h")
+				return
+			}
+			maxUses := 5
+			ttl := 24 * time.Hour
+			var parseErr error
+			if len(fields) >= 2 {
+				maxUses, parseErr = strconv.Atoi(fields[1])
+				if parseErr != nil || maxUses < 1 || maxUses > 10000 {
+					r.reply(ctx, chat, "Max use harus berupa angka 1–10000.")
+					return
+				}
+			}
+			if len(fields) == 3 {
+				ttl, parseErr = time.ParseDuration(fields[2])
+				if parseErr != nil || ttl < time.Minute || ttl > 8760*time.Hour {
+					r.reply(ctx, chat, "Durasi tidak valid. Gunakan format seperti 30h, minimal 1m dan maksimal 8760h.")
+					return
+				}
+			}
+			token, t, err := r.invites.Create(ctx, maxUses, ttl)
 			if err != nil {
 				r.reply(ctx, chat, "Gagal membuat token.")
 				log.Error().Err(err).Msg("Gagal membuat token undangan")
 				return
 			}
-			r.reply(ctx, chat, fmt.Sprintf("🔐 *Token Undangan*\nToken: %s\nID: %d\nKuota: %d nomor\nKedaluwarsa: %s UTC", token, t.ID, t.MaxUses, t.ExpiresAt.Format("2006-01-02 15:04:05")))
+			r.reply(ctx, chat, fmt.Sprintf("🔐 *Token Undangan*\nToken: %s\nLink command: .init_%s\nID: %d\nKuota: %d nomor\nKedaluwarsa: %s UTC", token, token, t.ID, t.MaxUses, t.ExpiresAt.Format("2006-01-02 15:04:05")))
 		case args == "list":
 			tokens, err := r.invites.List(ctx)
 			if err != nil {
@@ -342,18 +369,41 @@ func (r *Router) handleCommand(ctx context.Context, evt *events.Message, cmd, ar
 			r.reply(ctx, chat, "Perintah ini khusus owner.")
 			return
 		}
-		if args == "" {
-			r.reply(ctx, chat, "Format: `.bc <pesan>`")
+		broadcastText, ok := maintenanceBroadcast(args)
+		if !ok {
+			r.reply(ctx, chat, "Format: .bc <pesan>\nTemplate: .bc upcoming [detail] | .bc maintenance [detail] | .bc ends [detail]")
 			return
 		}
 		go func() {
-			n, _ := r.admin.Broadcast(ctx, args)
+			n, _ := r.admin.Broadcast(ctx, broadcastText)
 			r.reply(ctx, chat, fmt.Sprintf("Pesan telah disiarkan ke %d nomor.", n))
 		}()
 
 	default:
 		r.reply(ctx, chat, fmt.Sprintf("Perintah `.%s` tidak dikenal. Ketik `.menu` untuk melihat daftar fitur.", cmd))
 	}
+}
+
+
+func maintenanceBroadcast(args string) (string, bool) {
+	args = strings.TrimSpace(args)
+	fields := strings.Fields(args)
+	if len(fields) == 0 { return "", false }
+	kind := strings.ToLower(fields[0])
+	detail := strings.TrimSpace(strings.TrimPrefix(args, fields[0]))
+	var message string
+	switch kind {
+	case "upcoming", "upcoming-maintenance":
+		message = "📢 *PENGUMUMAN MAINTENANCE*\n\nBot akan menjalani maintenance dalam waktu dekat. Selama proses persiapan, layanan mungkin mengalami gangguan. Terima kasih atas pengertiannya."
+	case "maintenance", "start":
+		message = "🛠️ *MAINTENANCE BERLANGSUNG*\n\nBot sedang dalam proses maintenance. Beberapa fitur mungkin tidak dapat digunakan sementara waktu. Kami akan mengabari kembali setelah layanan pulih."
+	case "ends", "ended", "selesai":
+		message = "✅ *MAINTENANCE SELESAI*\n\nMaintenance telah selesai dan layanan bot kembali tersedia. Silakan gunakan bot seperti biasa. Terima kasih sudah menunggu!"
+	default:
+		return args, true
+	}
+	if detail != "" { message += "\n\n📝 " + detail }
+	return message, true
 }
 
 func (r *Router) reply(ctx context.Context, chat types.JID, text string) {
