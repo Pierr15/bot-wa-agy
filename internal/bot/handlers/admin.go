@@ -67,8 +67,10 @@ func (h *AdminHandler) BuildMenu(isOwner bool) string {
 		sb.WriteString("🛡️ *OWNER TOOLS*\n")
 		sb.WriteString("› `.stat` → uptime, RAM, disk, dan info sistem\n")
 		sb.WriteString("› `.id` → detail JID chat dan pengirim\n")
-		sb.WriteString("› `.bc <pesan>` → siarkan pesan ke owner & whitelist\n")
-		sb.WriteString("› `.token create` → buat token undangan (5 nomor, 24 jam)\n")
+		sb.WriteString("› `.bc <pesan>` → siarkan pesan custom\n")
+		sb.WriteString("› `.bc upcoming` / `.bc maintenance` / `.bc ends` → template maintenance\n")
+		sb.WriteString("› `.token create [max_use] [durasi]` → token undangan\n")
+		sb.WriteString("  Contoh: `.token create 4 30h`\n")
 		sb.WriteString("› `.token list` / `.token revoke ID` → kelola token\n")
 		sb.WriteString("\n🔐 _Akses owner aktif_\n")
 	} else {
