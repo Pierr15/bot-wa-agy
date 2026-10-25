@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"bot-wa/internal/config"
+	"bot-wa/internal/invite"
 
 	"github.com/mdp/qrterminal/v3"
 	"github.com/rs/zerolog/log"
@@ -24,6 +25,7 @@ type BotClient struct {
 	client *whatsmeow.Client
 	router *Router
 	access *AccessControl
+	invites *invite.Service
 }
 
 func whatsmeowLogLevel(level string) string {
