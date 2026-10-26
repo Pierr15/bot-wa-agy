@@ -56,5 +56,5 @@ func buildTIFFMetadata(packName, author string) []byte {
 	binary.LittleEndian.PutUint32(out[30:34], artistOffset)
 	copy(out[dataOffset:], description)
 	copy(out[artistOffset:], artist)
-	return append([]byte("Exif\\x00\\x00"), out...)
+	return append([]byte("Exif\x00\x00"), out...)
 }
