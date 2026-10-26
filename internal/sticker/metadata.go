@@ -31,8 +31,7 @@ func EmbedWebPMetadata(data []byte, packName, author string) ([]byte, error) {
 	return out, nil
 }
 
-// buildTIFFMetadata writes a little-endian TIFF IFD with ImageDescription
-// and Artist ASCII fields, which are commonly used for sticker EXIF metadata.
+// buildTIFFMetadata writes the EXIF UserComment field used by WhatsApp sticker tooling.
 func buildTIFFMetadata(packName, author string) []byte {
 	// WhatsApp sticker tooling conventionally stores pack metadata in EXIF
 	// UserComment as an ASCII-prefixed JSON object.
@@ -54,7 +53,7 @@ func buildTIFFMetadata(packName, author string) []byte {
 	binary.LittleEndian.PutUint16(out[10:12], 0x9286) // UserComment
 	binary.LittleEndian.PutUint16(out[12:14], 7)      // UNDEFINED
 	binary.LittleEndian.PutUint32(out[14:18], uint32(len(comment)))
-	binary.LittleEndian.PutUint32(out[18:22], dataOffset)
+	binary.LittleEndian.PutUint32(out[18:22], uint32(dataOffset))
 	copy(out[dataOffset:], comment)
 	return append([]byte("Exif\x00\x00"), out...)
 }
