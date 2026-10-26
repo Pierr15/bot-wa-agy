@@ -7,7 +7,6 @@ import (
 	"image"
 	_ "image/jpeg"
 	"image/png"
-	_ "image/png"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -149,12 +148,15 @@ func CreateStickerWebP(ctx context.Context, imgData []byte, zones *TextZones, fo
 
 		args := []string{
 			"-y",
+			"-v", "error",
 			"-i", tempPngPath,
-			"-vf", fmt.Sprintf("scale=%d:%d", StickerSize, StickerSize),
+			"-frames:v", "1",
+			"-vf", fmt.Sprintf("scale=%d:%d:flags=lanczos,format=rgba", StickerSize, StickerSize),
 			"-c:v", "libwebp",
 			"-quality", fmt.Sprintf("%d", q),
 			"-preset", "picture",
 			"-lossless", "0",
+			"-f", "webp",
 			tempWebpPath,
 		}
 
@@ -168,6 +170,9 @@ func CreateStickerWebP(ctx context.Context, imgData []byte, zones *TextZones, fo
 			continue
 		}
 
+		if !IsValidWebP(webpData) {
+			return nil, fmt.Errorf("ffmpeg menghasilkan file WebP tidak valid pada quality %d", q)
+		}
 		if len(webpData) <= MaxStickerSize {
 			return webpData, nil
 		}
