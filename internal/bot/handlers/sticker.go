@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"bot-wa/internal/config"
@@ -21,6 +22,8 @@ import (
 type StickerHandler struct {
 	cfg    *config.Config
 	client *whatsmeow.Client
+	metadataMu sync.Mutex
+	pendingMetadata map[string]StickerMetadata
 }
 
 func NewStickerHandler(cfg *config.Config, client *whatsmeow.Client) *StickerHandler {
@@ -87,7 +90,7 @@ func (h *StickerHandler) HandleTextSticker(ctx context.Context, evt *events.Mess
 		return err
 	}
 	if !zones.HasText() {
-		return fmt.Errorf("masukkan teks stiker. Contoh: `.t KEREN` atau `.t BAWAH | ATAS`")
+		return fmt.Errorf("masukkan teks stiker. Contoh: `.st KEREN` atau `.st BAWAH | ATAS`")
 	}
 
 	workDir, err := os.MkdirTemp(h.cfg.TmpDir, "stkt-")
@@ -119,6 +122,12 @@ func (h *StickerHandler) SendHint(ctx context.Context, chat types.JID) {
 }
 
 func (h *StickerHandler) sendSticker(ctx context.Context, chat types.JID, webpData []byte, isAnimated bool) error {
+	var metadata StickerMetadata
+	var err error
+	webpData, metadata, err = h.applyStickerMetadata(chat.String(), webpData)
+	if err != nil {
+		return fmt.Errorf("gagal menyematkan metadata stiker: %w", err)
+	}
 	resp, err := h.client.Upload(ctx, webpData, whatsmeow.MediaImage)
 	if err != nil {
 		return fmt.Errorf("gagal mengunggah stiker: %w", err)
@@ -142,7 +151,7 @@ func (h *StickerHandler) sendSticker(ctx context.Context, chat types.JID, webpDa
 		return fmt.Errorf("gagal mengirim stiker: %w", err)
 	}
 
-	log.Info().Str("chat", chat.String()).Bool("animated", isAnimated).Int("bytes", len(webpData)).Msg("Stiker berhasil dikirim")
+	log.Info().Str("chat", chat.String()).Str("pack", metadata.PackName).Str("author", metadata.Author).Bool("animated", isAnimated).Int("bytes", len(webpData)).Msg("Stiker berhasil dikirim")
 	return nil
 }
 
