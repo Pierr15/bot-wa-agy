@@ -47,7 +47,7 @@ func (h *AdminHandler) BuildMenu(isOwner bool) string {
 	sb.WriteString("› `.s | TEKS` → teks atas\n")
 	sb.WriteString("› `.s BAWAH | ATAS` → teks dua zona\n")
 	sb.WriteString("› Video/GIF + caption `.s` → stiker animasi (maks. " + fmt.Sprintf("%.0f", h.cfg.StickerAnimMaxSec) + " detik)\n")
-	sb.WriteString("› `.t TEKS` → stiker teks berlatar putih\n")
+	sb.WriteString("› `.t TEKS` / `.brat TEKS` → stiker teks Brat berlatar putih\n")
 	sb.WriteString("💡 _Bisa juga reply foto/video dengan `.s`._\n\n")
 
 	sb.WriteString("📥 *MEDIA DOWNLOADER*\n")
