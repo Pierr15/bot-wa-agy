@@ -5,12 +5,12 @@ bot-wa-arm64
 
 # Config & Credentials
 .env
-data/auth/
-data/cookies/
-data/qr.txt
+
+# Runtime state, sessions, databases, caches, and QR data
+# Keep local data out of Git so the updater can safely run with persistent state.
+data/
 
 # Temp & Logs
-data/tmp/
 logs/
 *.log
 
