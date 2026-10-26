@@ -25,7 +25,7 @@ func TestEmbedWebPMetadataAppendsExifChunk(t *testing.T) {
 	if binary.LittleEndian.Uint32(got[4:8]) != uint32(len(got)-8) {
 		t.Fatal("RIFF size was not updated")
 	}
-	if !bytes.Contains(got, []byte("Javier\\x00")) {
+	if !bytes.Contains(got, []byte("Javier\x00")) {
 		t.Fatal("author metadata was not embedded")
 	}
 }
