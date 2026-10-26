@@ -12,8 +12,12 @@ command -v go >/dev/null 2>&1 || { echo "Go tidak ditemukan; biner lama tidak di
 if ! git diff --quiet || ! git diff --cached --quiet; then
   echo "Update dibatalkan: ada perubahan lokal yang belum di-commit." >&2; exit 1
 fi
-if [ -n "$(git ls-files --others --exclude-standard)" ]; then
-  echo "Update dibatalkan: ada file lokal yang belum terlacak." >&2; exit 1
+# Runtime state in data/ is intentionally local and must not block updates.
+UNTRACKED_FILES="$(git ls-files --others --exclude-standard | grep -v '^data/' || true)"
+if [ -n "$UNTRACKED_FILES" ]; then
+  echo "Update dibatalkan: ada file lokal yang belum terlacak:" >&2
+  printf '%s\n' "$UNTRACKED_FILES" >&2
+  exit 1
 fi
 
 echo "Memeriksa pembaruan origin/$BRANCH..."
