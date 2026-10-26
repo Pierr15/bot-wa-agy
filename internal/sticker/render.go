@@ -187,7 +187,7 @@ func CreateBratStickerWebP(ctx context.Context, zones *TextZones, fontPath, ffmp
 	dc.Clear()
 	if zones == nil || !zones.HasText() { return nil, fmt.Errorf("masukkan teks stiker") }
 	if err := dc.LoadFontFace(fontPath, 62); err != nil { return nil, fmt.Errorf("gagal memuat font: %w", err) }
-	text := strings.ToLower(strings.TrimSpace(strings.Join([]string{zones.Top, zones.Center, zones.Bottom}, " ")))
+	text := normalizeBratText(strings.Join([]string{zones.Top, zones.Center, zones.Bottom}, " "))
 	maxWidth := float64(StickerSize - 60)
 	lines := dc.WordWrap(text, maxWidth)
 	if len(lines) == 0 { return nil, fmt.Errorf("masukkan teks stiker") }
@@ -244,4 +244,11 @@ func EnsureAntonFont(fontPath string) bool {
 		}
 	}
 	return false
+}
+
+
+// normalizeBratText matches the lowercase text treatment used by the reference
+// Brat generator while preserving Unicode letters and emoji.
+func normalizeBratText(text string) string {
+	return strings.ToLower(strings.TrimSpace(text))
 }
