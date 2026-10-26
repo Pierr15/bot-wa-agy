@@ -47,7 +47,9 @@ func (h *AdminHandler) BuildMenu(isOwner bool) string {
 	sb.WriteString("› `.s | TEKS` → teks atas\n")
 	sb.WriteString("› `.s BAWAH | ATAS` → teks dua zona\n")
 	sb.WriteString("› Video/GIF + caption `.s` → stiker animasi (maks. " + fmt.Sprintf("%.0f", h.cfg.StickerAnimMaxSec) + " detik)\n")
-	sb.WriteString("› `.t TEKS` / `.brat TEKS` → stiker teks Brat berlatar putih\n")
+	sb.WriteString("› `.st TEKS` → stiker teks Brat berlatar putih\n")
+	sb.WriteString("› `.wm Nama Paket|Author` → metadata stiker berikutnya\n")
+	sb.WriteString("› `.wm info` → lihat metadata saat ini dan default\n")
 	sb.WriteString("💡 _Bisa juga reply foto/video dengan `.s`._\n\n")
 
 	sb.WriteString("📥 *MEDIA DOWNLOADER*\n")
@@ -72,6 +74,7 @@ func (h *AdminHandler) BuildMenu(isOwner bool) string {
 		sb.WriteString("› `.token create [max_use] [durasi]` → token undangan\n")
 		sb.WriteString("  Contoh: `.token create 4 30h`\n")
 		sb.WriteString("› `.token list` / `.token revoke ID` → kelola token\n")
+		sb.WriteString("› `.wmd Nama Paket|Author` → ubah metadata default stiker\n")
 		sb.WriteString("\n🔐 _Akses owner aktif_\n")
 	} else {
 		sb.WriteString("\n✨ _Simple • Fast • Easy to use_\n")
