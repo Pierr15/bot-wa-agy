@@ -32,9 +32,15 @@ func RenderMemeText(baseImg image.Image, zones *TextZones, fontPath string) (ima
 		bw := float64(bounds.Dx())
 		bh := float64(bounds.Dy())
 
-		// Scale so that smaller dimension fills 512
+		// Plain image stickers preserve the original aspect ratio and use transparent
+		// padding. Text-overlay stickers retain the existing crop-to-fill behavior.
 		scale := float64(StickerSize) / bw
-		if float64(StickerSize)/bh > scale {
+		if zones == nil || !zones.HasText() {
+			scale = float64(StickerSize) / bw
+			if h := float64(StickerSize) / bh; h < scale {
+				scale = h
+			}
+		} else if float64(StickerSize)/bh > scale {
 			scale = float64(StickerSize) / bh
 		}
 
@@ -181,8 +187,8 @@ func CreateBratStickerWebP(ctx context.Context, zones *TextZones, fontPath, ffmp
 	dc.Clear()
 	if zones == nil || !zones.HasText() { return nil, fmt.Errorf("masukkan teks stiker") }
 	if err := dc.LoadFontFace(fontPath, 62); err != nil { return nil, fmt.Errorf("gagal memuat font: %w", err) }
-	text := strings.TrimSpace(strings.Join([]string{zones.Top, zones.Center, zones.Bottom}, " "))
-	maxWidth := float64(StickerSize - 76)
+	text := normalizeBratText(strings.Join([]string{zones.Top, zones.Center, zones.Bottom}, " "))
+	maxWidth := float64(StickerSize - 60)
 	lines := dc.WordWrap(text, maxWidth)
 	if len(lines) == 0 { return nil, fmt.Errorf("masukkan teks stiker") }
 	fontSize := 62.0
@@ -192,7 +198,7 @@ func CreateBratStickerWebP(ctx context.Context, zones *TextZones, fontPath, ffmp
 		if err := dc.LoadFontFace(fontPath, fontSize); err != nil { return nil, err }
 		lines = dc.WordWrap(text, maxWidth)
 	}
-	lineHeight := dc.FontHeight() * 1.12
+	lineHeight := dc.FontHeight() * 1.25
 	startY := (float64(StickerSize)-lineHeight*float64(len(lines)))/2 + lineHeight/2
 	dc.SetRGB(0, 0, 0)
 	for i, line := range lines { dc.DrawStringAnchored(line, float64(StickerSize)/2, startY+float64(i)*lineHeight, 0.5, 0.5) }
@@ -203,14 +209,18 @@ func CreateBratStickerWebP(ctx context.Context, zones *TextZones, fontPath, ffmp
 	if err := f.Close(); err != nil { return nil, err }
 	webpPath := filepath.Join(workDir, "brat.webp")
 	encode := func(quality int) ([]byte, error) {
-		cmd := exec.CommandContext(ctx, ffmpegPath, "-y", "-i", pngPath, "-vf", "scale=512:512", "-c:v", "libwebp", "-quality", fmt.Sprint(quality), "-preset", "picture", webpPath)
+		cmd := exec.CommandContext(ctx, ffmpegPath, "-y", "-i", pngPath, "-vf", "gblur=sigma=1.5,scale=512:512", "-c:v", "libwebp", "-quality", fmt.Sprint(quality), "-preset", "picture", webpPath)
 		if out, err := cmd.CombinedOutput(); err != nil { return nil, fmt.Errorf("ffmpeg webp error: %w (output: %s)", err, string(out)) }
 		return os.ReadFile(webpPath)
 	}
-	data, err := encode(85)
+	data, err := encode(90)
 	if err != nil { return nil, err }
-	if len(data) > MaxStickerSize { data, err = encode(60) }
-	return data, err
+	if len(data) > MaxStickerSize { data, err = encode(70) }
+	if err != nil { return nil, err }
+	if len(data) > MaxStickerSize {
+		return nil, fmt.Errorf("hasil stiker melebihi batas %d KB", MaxStickerSize/1024)
+	}
+	return data, nil
 }
 
 // IsValidWebP checks the RIFF and WEBP magic bytes.
@@ -234,4 +244,11 @@ func EnsureAntonFont(fontPath string) bool {
 		}
 	}
 	return false
+}
+
+
+// normalizeBratText matches the lowercase text treatment used by the reference
+// Brat generator while preserving Unicode letters and emoji.
+func normalizeBratText(text string) string {
+	return strings.ToLower(strings.TrimSpace(text))
 }
