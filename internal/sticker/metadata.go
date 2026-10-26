@@ -36,16 +36,11 @@ func EmbedWebPMetadata(data []byte, packName, author string) ([]byte, error) {
 func buildTIFFMetadata(packName, author string) []byte {
 	// WhatsApp sticker tooling conventionally stores pack metadata in EXIF
 	// UserComment as an ASCII-prefixed JSON object.
-	payload, _ := json.Marshal(struct {
-		PackID string   \`json:"sticker-pack-id"\`
-		PackName string \`json:"sticker-pack-name"\`
-		Publisher string \`json:"sticker-pack-publisher"\`
-		Emojis []string \`json:"emojis"\`
-	}{
-		PackID: "bot-wa-agy",
-		PackName: packName,
-		Publisher: author,
-		Emojis: []string{},
+	payload, _ := json.Marshal(map[string]interface{}{
+		"sticker-pack-id": "bot-wa-agy",
+		"sticker-pack-name": packName,
+		"sticker-pack-publisher": author,
+		"emojis": []string{},
 	})
 	comment := append([]byte("ASCII\x00\x00\x00"), payload...)
 
