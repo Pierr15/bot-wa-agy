@@ -318,7 +318,7 @@ func (r *Router) handleCommand(ctx context.Context, evt *events.Message, cmd, ar
 		}
 		r.reply(ctx, chat, "Kirim foto/video dengan caption `.s` atau reply foto/video Anda dengan `.s`.")
 
-	case "t", "teks":
+	case "st", "brat":
 		r.sticker.React(ctx, chat, sender, msgID, "⏳")
 		if err := r.sticker.HandleTextSticker(ctx, evt, args); err != nil {
 			r.sticker.React(ctx, chat, sender, msgID, "❌")
@@ -326,6 +326,28 @@ func (r *Router) handleCommand(ctx context.Context, evt *events.Message, cmd, ar
 		} else {
 			r.sticker.React(ctx, chat, sender, msgID, "✅")
 		}
+
+	case "wm":
+		if strings.EqualFold(strings.TrimSpace(args), "info") || strings.TrimSpace(args) == "" {
+			r.reply(ctx, chat, r.sticker.StickerMetadataInfo(chat.String()))
+			return
+		}
+		if err := r.sticker.SetStickerMetadata(chat.String(), args); err != nil {
+			r.reply(ctx, chat, "Metadata tidak valid: "+err.Error())
+			return
+		}
+		r.reply(ctx, chat, "✅ Metadata disiapkan untuk stiker berikutnya di chat ini.\n"+r.sticker.StickerMetadataInfo(chat.String()))
+
+	case "wmd":
+		if !isOwner {
+			r.reply(ctx, chat, "Perintah ini khusus owner.")
+			return
+		}
+		if err := r.sticker.SetDefaultStickerMetadata(args); err != nil {
+			r.reply(ctx, chat, "Gagal menyimpan metadata default: "+err.Error())
+			return
+		}
+		r.reply(ctx, chat, "✅ Metadata default berhasil disimpan.\n"+r.sticker.StickerMetadataInfo(chat.String()))
 
 	case "v":
 		go func() {
