@@ -209,7 +209,7 @@ func CreateBratStickerWebP(ctx context.Context, zones *TextZones, fontPath, ffmp
 	if err := f.Close(); err != nil { return nil, err }
 	webpPath := filepath.Join(workDir, "brat.webp")
 	encode := func(quality int) ([]byte, error) {
-		cmd := exec.CommandContext(ctx, ffmpegPath, "-y", "-i", pngPath, "-vf", "scale=512:512", "-c:v", "libwebp", "-quality", fmt.Sprint(quality), "-preset", "picture", webpPath)
+		cmd := exec.CommandContext(ctx, ffmpegPath, "-y", "-i", pngPath, "-vf", "gblur=sigma=1.5,scale=512:512", "-c:v", "libwebp", "-quality", fmt.Sprint(quality), "-preset", "picture", webpPath)
 		if out, err := cmd.CombinedOutput(); err != nil { return nil, fmt.Errorf("ffmpeg webp error: %w (output: %s)", err, string(out)) }
 		return os.ReadFile(webpPath)
 	}
