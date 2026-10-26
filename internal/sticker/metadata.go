@@ -2,6 +2,7 @@ package sticker
 
 import (
 	"encoding/binary"
+	"encoding/json"
 	"fmt"
 	"strings"
 )
@@ -33,28 +34,32 @@ func EmbedWebPMetadata(data []byte, packName, author string) ([]byte, error) {
 // buildTIFFMetadata writes a little-endian TIFF IFD with ImageDescription
 // and Artist ASCII fields, which are commonly used for sticker EXIF metadata.
 func buildTIFFMetadata(packName, author string) []byte {
-	description := []byte(packName + "\x00")
-	artist := []byte(author + "\x00")
-	// TIFF header (8 bytes), IFD count (2), two entries (24), next IFD (4).
-	const dataOffset = 8 + 2 + 2*12 + 4
-	descOffset := uint32(dataOffset)
-	artistOffset := descOffset + uint32(len(description))
-	out := make([]byte, int(artistOffset)+len(artist))
+	// WhatsApp sticker tooling conventionally stores pack metadata in EXIF
+	// UserComment as an ASCII-prefixed JSON object.
+	payload, _ := json.Marshal(struct {
+		PackID string   \`json:"sticker-pack-id"\`
+		PackName string \`json:"sticker-pack-name"\`
+		Publisher string \`json:"sticker-pack-publisher"\`
+		Emojis []string \`json:"emojis"\`
+	}{
+		PackID: "bot-wa-agy",
+		PackName: packName,
+		Publisher: author,
+		Emojis: []string{},
+	})
+	comment := append([]byte("ASCII\x00\x00\x00"), payload...)
+
+	// TIFF header (8 bytes), one IFD entry (12), and next-IFD pointer (4).
+	const dataOffset = 8 + 2 + 12 + 4
+	out := make([]byte, dataOffset+len(comment))
 	copy(out[:2], "II")
 	binary.LittleEndian.PutUint16(out[2:4], 42)
 	binary.LittleEndian.PutUint32(out[4:8], 8)
-	binary.LittleEndian.PutUint16(out[8:10], 2)
-	// ImageDescription, ASCII
-	binary.LittleEndian.PutUint16(out[10:12], 0x010e)
-	binary.LittleEndian.PutUint16(out[12:14], 2)
-	binary.LittleEndian.PutUint32(out[14:18], uint32(len(description)))
-	binary.LittleEndian.PutUint32(out[18:22], descOffset)
-	// Artist, ASCII
-	binary.LittleEndian.PutUint16(out[22:24], 0x013b)
-	binary.LittleEndian.PutUint16(out[24:26], 2)
-	binary.LittleEndian.PutUint32(out[26:30], uint32(len(artist)))
-	binary.LittleEndian.PutUint32(out[30:34], artistOffset)
-	copy(out[dataOffset:], description)
-	copy(out[artistOffset:], artist)
+	binary.LittleEndian.PutUint16(out[8:10], 1)
+	binary.LittleEndian.PutUint16(out[10:12], 0x9286) // UserComment
+	binary.LittleEndian.PutUint16(out[12:14], 7)      // UNDEFINED
+	binary.LittleEndian.PutUint32(out[14:18], uint32(len(comment)))
+	binary.LittleEndian.PutUint32(out[18:22], dataOffset)
+	copy(out[dataOffset:], comment)
 	return append([]byte("Exif\x00\x00"), out...)
 }
