@@ -318,7 +318,7 @@ func (r *Router) handleCommand(ctx context.Context, evt *events.Message, cmd, ar
 		}
 		r.reply(ctx, chat, "Kirim foto/video dengan caption `.s` atau reply foto/video Anda dengan `.s`.")
 
-	case "st":
+	case "st", "brat":
 		r.sticker.React(ctx, chat, sender, msgID, "⏳")
 		if err := r.sticker.HandleTextSticker(ctx, evt, args); err != nil {
 			r.sticker.React(ctx, chat, sender, msgID, "❌")
