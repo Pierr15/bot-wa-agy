@@ -147,6 +147,10 @@ func (b *BotClient) Start(ctx context.Context) error {
 
 func (b *BotClient) Connected() <-chan struct{} { return b.connected }
 
+func (b *BotClient) IsConnected() bool {
+	return b.client != nil && b.client.IsConnected()
+}
+
 func (b *BotClient) Broadcast(ctx context.Context, text string) (int, error) {
 	return b.router.Broadcast(ctx, text)
 }
