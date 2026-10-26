@@ -1,6 +1,7 @@
 package sticker
 
 import (
+	"bytes"
 	"encoding/binary"
 	"testing"
 )
@@ -24,7 +25,7 @@ func TestEmbedWebPMetadataAppendsExifChunk(t *testing.T) {
 	if binary.LittleEndian.Uint32(got[4:8]) != uint32(len(got)-8) {
 		t.Fatal("RIFF size was not updated")
 	}
-	if string(got[len(got)-len("Javier")-1:len(got)-1]) != "Javier" {
+	if !bytes.Contains(got, []byte("Javier\\x00")) {
 		t.Fatal("author metadata was not embedded")
 	}
 }
