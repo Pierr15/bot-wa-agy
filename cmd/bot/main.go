@@ -86,12 +86,15 @@ func main() {
 	sig := <-sigChan
 	log.Info().Str("signal", sig.String()).Msg("Menerima sinyal shutdown, menghentikan bot secara rapi...")
 
-	// Ctrl+C (SIGINT) gets a best-effort maintenance broadcast before disconnecting.
-	// Do not broadcast on SIGTERM: auto-update already announces maintenance before signaling us.
-	if sig == os.Interrupt {
-		if clientConnected := client.IsConnected(); clientConnected {
+	// Broadcast before manual Ctrl+C or a manual runit stop. Auto-update has
+	// already announced maintenance and leaves a marker, so avoid duplicate notices.
+	marker := filepath.Join(cfg.DataDir, "autoupdate-pending")
+	_, markerErr := os.Stat(marker)
+	manualShutdown := sig == os.Interrupt || (sig == syscall.SIGTERM && os.IsNotExist(markerErr))
+	if manualShutdown {
+		if client.IsConnected() {
 			bctx, cancel := context.WithTimeout(context.Background(), 12*time.Second)
-			sent, err := client.Broadcast(bctx, "🛑 *BOT AKAN DIHENTIKAN MANUAL*\n\nOwner menghentikan service melalui Ctrl+C untuk maintenance. Bot akan offline sementara dan tidak bisa memproses pesan sampai dijalankan kembali. Kami akan mengabari setelah layanan pulih.")
+			sent, err := client.Broadcast(bctx, "🛑 *BOT AKAN DIHENTIKAN MANUAL*\n\nOwner menghentikan service untuk maintenance. Bot akan offline sementara dan tidak bisa memproses pesan sampai dijalankan kembali. Kami akan mengabari setelah layanan pulih.")
 			cancel()
 			if err != nil || sent == 0 {
 				log.Warn().Err(err).Int("sent", sent).Msg("Broadcast shutdown tidak terkirim sepenuhnya")
