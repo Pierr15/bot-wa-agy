@@ -11,7 +11,7 @@ Dirancang khusus untuk berjalan stabil 24/7 di **HP Android (Termux)** dengan ko
 - **Stiker Meme Indonesia**:
   - Foto + caption `.s` → Stiker WebP 512×512 (≤100 KB) dengan gaya meme teks putih outline hitam tebal.
   - Teks atas/bawah/tengah via pipe (`.s TEKS BAWAH | TEKS ATAS`) atau prefix (`.s atas: ...`, `.s bawah: ...`).
-  - `.t TEKS` → Stiker teks minimalis bergaya Brat: teks hitam lowercase, rata tengah, latar putih.
+  - `.st TEKS` → Stiker teks minimalis bergaya Brat: teks hitam lowercase, rata tengah, latar putih.
   - Video/GIF + `.s` → Stiker animasi WebP (maks 6 detik, ≤300 KB) dengan pipeline FFmpeg 2-pass cepat (hemat CPU/baterai).
   - Reply foto/video yang sudah terkirim dengan `.s` untuk memprosesnya.
 - **Downloader TikTok & Instagram**:
@@ -121,8 +121,8 @@ tail -f ~/.local/share/wa-bot/log/current   # Pantau log secara realtime
 | Perintah | Fungsi |
 | :--- | :--- |
 | `.s [TEKS]` | Buat stiker dari foto/video (bawah / `\|` atas / dua zona) |
-| `.t <TEKS>` | Buat stiker teks minimalis gaya Brat berlatar putih |
-| `.v` | Kirim video dari download terakhir |
+| `.st <TEKS>` | Buat stiker teks minimalis gaya Brat berlatar putih |
+| `.wm Nama Paket|Author` | Atur metadata untuk stiker berikutnya di chat ini |\n| `.wm info` | Tampilkan metadata aktif dan default |\n| `.wmd Nama Paket|Author` | Ubah metadata default (*khusus owner*) |\n| `.v` | Kirim video dari download terakhir |
 | `.a` | Ekstrak audio dari download terakhir |
 | `.f [N]` | Kirim semua foto atau foto ke-N dari download terakhir |
 | `.menu` | Tampilkan menu bantuan |
