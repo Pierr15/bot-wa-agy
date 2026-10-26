@@ -122,11 +122,19 @@ tail -f ~/.local/share/wa-bot/log/current   # Pantau log secara realtime
 | :--- | :--- |
 | `.s [TEKS]` | Buat stiker dari foto/video (bawah / `\|` atas / dua zona) |
 | `.st <TEKS>` | Buat stiker teks minimalis gaya Brat berlatar putih |
-| `.wm Nama Paket|Author` | Atur metadata untuk stiker berikutnya di chat ini |\n| `.wm info` | Tampilkan metadata aktif dan default |\n| `.wmd Nama Paket|Author` | Ubah metadata default (*khusus owner*) |\n| `.v` | Kirim video dari download terakhir |
+| `.wm Nama Paket\|Author` | Atur metadata untuk stiker berikutnya di chat ini |
+| `.wm info` | Tampilkan metadata aktif dan default |
+| `.wmd Nama Paket\|Author` | Ubah metadata default (*khusus owner*) |
+| `.v` | Kirim video dari download terakhir |
 | `.a` | Ekstrak audio dari download terakhir |
 | `.f [N]` | Kirim semua foto atau foto ke-N dari download terakhir |
 | `.menu` | Tampilkan menu bantuan |
 | `.ping` | Cek status aktif bot |
 | `.stat` | Cek uptime, RAM, disk, & spek sistem (*khusus owner*) |
 | `.id` | Cek JID chat & pengirim (*khusus owner*) |
-| `.bc <teks>` | Siarkan pesan custom (*khusus owner*) |\n| `.bc upcoming [detail]` | Template pengumuman maintenance mendatang (*khusus owner*) |\n| `.bc maintenance [detail]` | Template maintenance berlangsung (*khusus owner*) |\n| `.bc ends [detail]` | Template maintenance selesai (*khusus owner*) |\n| `.token create [max_use] [durasi]` | Buat token undangan, contoh `.token create 4 30h` (*khusus owner*) |\n| `.init_TOKEN` | Redeem token dalam format yang bisa dipakai di link WhatsApp |
+| `.bc <teks>` | Siarkan pesan custom (*khusus owner*) |
+| `.bc upcoming [detail]` | Template pengumuman maintenance mendatang (*khusus owner*) |
+| `.bc maintenance [detail]` | Template maintenance berlangsung (*khusus owner*) |
+| `.bc ends [detail]` | Template maintenance selesai (*khusus owner*) |
+| `.token create [max_use] [durasi]` | Buat token undangan, contoh `.token create 4 30h` (*khusus owner*) |
+| `.init_TOKEN` | Redeem token dalam format yang bisa dipakai di link WhatsApp |
