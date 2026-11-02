@@ -65,7 +65,7 @@ func CreateMemeTextStickerWebP(ctx context.Context, zones *TextZones, fontPath, 
 	}
 
 	dc := gg.NewContext(StickerSize, StickerSize)
-	dc.SetColor(color.White)
+	dc.SetRGBA(0, 0, 0, 0)
 	dc.Clear()
 
 	fontSize := 54.0
