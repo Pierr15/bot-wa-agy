@@ -10,8 +10,8 @@ Dirancang khusus untuk berjalan stabil 24/7 di **HP Android (Termux)** dengan ko
 
 - **Stiker Meme Indonesia**:
   - Foto + caption `.s` → Stiker WebP 512×512 (≤100 KB) dengan gaya meme teks putih outline hitam tebal.
-  - Teks atas/bawah/tengah via pipe (`.s TEKS BAWAH | TEKS ATAS`) atau prefix (`.s atas: ...`, `.s bawah: ...`).
-  - `.st TEKS` → Stiker teks minimalis bergaya Brat: teks hitam lowercase, rata tengah, latar putih.
+  - Teks atas/bawah/tengah via pipe (`.s TEKS BAWAH | TEKS ATAS`) atau prefix (`.s atas: ...`, `.s bawah: ...`). Emoji dapat ditambahkan langsung pada caption/deskripsi, misalnya `.s BESOK AJA 😂` (memerlukan font simbol/emoji fallback yang tersedia).
+  - `.st TEKS` → Stiker teks putih uppercase, bold, outline hitam tebal, dan posisi bawah seperti meme pada contoh.
   - Video/GIF + `.s` → Stiker animasi WebP (maks 6 detik, ≤300 KB) dengan pipeline FFmpeg 2-pass cepat (hemat CPU/baterai).
   - Reply foto/video yang sudah terkirim dengan `.s` untuk memprosesnya.
 - **Downloader TikTok & Instagram**:
