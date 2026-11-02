@@ -148,6 +148,7 @@ func CreateMemeTextStickerWebP(ctx context.Context, zones *TextZones, fontPath, 
 func drawOutlinedMemeLine(dc *gg.Context, line string, centerX, centerY float64, primaryFont, emojiFont string, size float64) {
 	type glyph struct {
 		value string
+		face string
 		width float64
 	}
 	glyphs := make([]glyph, 0, len([]rune(line)))
@@ -163,12 +164,13 @@ func drawOutlinedMemeLine(dc *gg.Context, line string, centerX, centerY float64,
 		_ = dc.LoadFontFace(font, size)
 		value := string(r)
 		width, _ := dc.MeasureString(value)
-		glyphs = append(glyphs, glyph{value: value, width: width})
+		glyphs = append(glyphs, glyph{value: value, face: font, width: width})
 		totalWidth += width
 	}
 
 	x := centerX - totalWidth/2
 	for _, g := range glyphs {
+		_ = dc.LoadFontFace(g.face, size)
 		// Draw each glyph with a thick black stroke, then the white foreground.
 		for dx := -3.0; dx <= 3.0; dx += 1.5 {
 			for dy := -3.0; dy <= 3.0; dy += 1.5 {
