@@ -184,48 +184,9 @@ func CreateStickerWebP(ctx context.Context, imgData []byte, zones *TextZones, fo
 }
 
 
- // CreateBratStickerWebP renders .t text in a minimal Brat-generator style:
- // white canvas, bold black lowercase text, centered with generous whitespace.
+ // CreateBratStickerWebP is kept as a compatibility wrapper for existing callers.
 func CreateBratStickerWebP(ctx context.Context, zones *TextZones, fontPath, ffmpegPath, workDir string) ([]byte, error) {
-	dc := gg.NewContext(StickerSize, StickerSize)
-	dc.SetRGB(1, 1, 1)
-	dc.Clear()
-	if zones == nil || !zones.HasText() { return nil, fmt.Errorf("masukkan teks stiker") }
-	if err := dc.LoadFontFace(fontPath, 62); err != nil { return nil, fmt.Errorf("gagal memuat font: %w", err) }
-	text := normalizeBratText(strings.Join([]string{zones.Top, zones.Center, zones.Bottom}, " "))
-	maxWidth := float64(StickerSize - 60)
-	lines := dc.WordWrap(text, maxWidth)
-	if len(lines) == 0 { return nil, fmt.Errorf("masukkan teks stiker") }
-	fontSize := 62.0
-	for len(lines) > 5 || dc.FontHeight()*float64(len(lines))*1.12 > float64(StickerSize-100) {
-		fontSize -= 2
-		if fontSize < 24 { return nil, fmt.Errorf("teks terlalu panjang untuk stiker") }
-		if err := dc.LoadFontFace(fontPath, fontSize); err != nil { return nil, err }
-		lines = dc.WordWrap(text, maxWidth)
-	}
-	lineHeight := dc.FontHeight() * 1.25
-	startY := (float64(StickerSize)-lineHeight*float64(len(lines)))/2 + lineHeight/2
-	dc.SetRGB(0, 0, 0)
-	for i, line := range lines { dc.DrawStringAnchored(line, float64(StickerSize)/2, startY+float64(i)*lineHeight, 0.5, 0.5) }
-	pngPath := filepath.Join(workDir, "brat_render.png")
-	f, err := os.Create(pngPath)
-	if err != nil { return nil, err }
-	if err := png.Encode(f, dc.Image()); err != nil { _ = f.Close(); return nil, err }
-	if err := f.Close(); err != nil { return nil, err }
-	webpPath := filepath.Join(workDir, "brat.webp")
-	encode := func(quality int) ([]byte, error) {
-		cmd := exec.CommandContext(ctx, ffmpegPath, "-y", "-i", pngPath, "-vf", "gblur=sigma=1.5,scale=512:512", "-c:v", "libwebp", "-quality", fmt.Sprint(quality), "-preset", "picture", webpPath)
-		if out, err := cmd.CombinedOutput(); err != nil { return nil, fmt.Errorf("ffmpeg webp error: %w (output: %s)", err, string(out)) }
-		return os.ReadFile(webpPath)
-	}
-	data, err := encode(90)
-	if err != nil { return nil, err }
-	if len(data) > MaxStickerSize { data, err = encode(70) }
-	if err != nil { return nil, err }
-	if len(data) > MaxStickerSize {
-		return nil, fmt.Errorf("hasil stiker melebihi batas %d KB", MaxStickerSize/1024)
-	}
-	return data, nil
+	return CreateMemeTextStickerWebP(ctx, zones, fontPath, ffmpegPath, workDir)
 }
 
 // IsValidWebP checks the RIFF and WEBP magic bytes.
