@@ -79,6 +79,14 @@ func RenderMemeText(baseImg image.Image, zones *TextZones, fontPath string) (ima
 			break
 		}
 	}
+	if emojiFont == "" {
+		for _, value := range []string{zones.Top, zones.Center, zones.Bottom} {
+			for _, r := range value {
+				if isEmojiRune(r) { return nil, fmt.Errorf("font emoji tidak ditemukan. Pasang NotoSansSymbols2-Regular.ttf atau NotoEmoji-Regular.ttf di folder assets/fonts") }
+			}
+		}
+	}
+	if err := dc.LoadFontFace(fontPath, 42); err != nil { return nil, err }
 	drawOutlinedText := func(text string, yAnchor float64, alignY float64) {
 		lines := dc.WordWrap(text, maxWidth)
 		if len(lines) == 0 { return }
