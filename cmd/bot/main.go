@@ -58,6 +58,11 @@ func main() {
 		log.Warn().Str("path", cfg.FontPath).Msg("Font Anton-Regular.ttf tidak ditemukan di path tersebut; pastikan file font ada di assets/fonts/")
 	}
 
+	// 2b. Verify FFmpeg (dipakai untuk semua jalur pembuatan stiker)
+	if _, err := sticker.ResolveBinary(cfg.FfmpegPath, "ffmpeg"); err != nil {
+		log.Error().Err(err).Msg("FFmpeg tidak tersedia; perintah stiker akan gagal sampai FFmpeg dipasang")
+	}
+
 	// 3. Start background temp janitor
 	stopJanitor := make(chan struct{})
 	defer close(stopJanitor)

@@ -22,6 +22,8 @@ import (
 type StickerHandler struct {
 	cfg    *config.Config
 	client *whatsmeow.Client
+	// Resolved FFmpeg path; empty until resolveFfmpeg succeeds.
+	ffmpegPath string
 	metadataMu sync.Mutex
 	pendingMetadata map[string]StickerMetadata
 }
@@ -31,6 +33,28 @@ func NewStickerHandler(cfg *config.Config, client *whatsmeow.Client) *StickerHan
 		cfg:    cfg,
 		client: client,
 	}
+}
+
+// FfmpegReady reports whether the FFmpeg binary can be located.
+func (h *StickerHandler) FfmpegReady() bool {
+	return h.withFfmpeg(func(path string) error {
+		log.Info().Str("path", path).Msg("FFmpeg ditemukan; perintah stiker siap digunakan")
+		return nil
+	}) == nil
+}
+
+
+
+// withFfmpeg resolves the FFmpeg binary once and runs fn with it.
+func (h *StickerHandler) withFfmpeg(fn func(path string) error) error {
+	if h.ffmpegPath == "" {
+		resolved, err := sticker.ResolveBinary(h.cfg.FfmpegPath, "ffmpeg")
+		if err != nil {
+			return err
+		}
+		h.ffmpegPath = resolved
+	}
+	return fn(h.ffmpegPath)
 }
 
 func (h *StickerHandler) HandleImageSticker(ctx context.Context, evt *events.Message, imgMsg *waProto.ImageMessage, caption string) error {
@@ -51,8 +75,12 @@ func (h *StickerHandler) HandleImageSticker(ctx context.Context, evt *events.Mes
 	}
 	defer os.RemoveAll(workDir)
 
-	webpData, err := sticker.CreateStickerWebP(ctx, data, zones, h.cfg.FontPath, h.cfg.FfmpegPath, workDir)
-	if err != nil {
+	var webpData []byte
+	if err := h.withFfmpeg(func(path string) error {
+		var encErr error
+		webpData, encErr = sticker.CreateStickerWebP(ctx, data, zones, h.cfg.FontPath, path, workDir)
+		return encErr
+	}); err != nil {
 		return fmt.Errorf("gagal merender stiker: %w", err)
 	}
 
@@ -76,8 +104,12 @@ func (h *StickerHandler) HandleVideoSticker(ctx context.Context, evt *events.Mes
 		return err
 	}
 
-	webpData, err := sticker.CreateAnimatedSticker(ctx, h.cfg.FfmpegPath, srcPath, workDir, h.cfg.StickerAnimMaxSec, h.cfg.StickerAnimMaxKB)
-	if err != nil {
+	var webpData []byte
+	if err := h.withFfmpeg(func(path string) error {
+		var encErr error
+		webpData, encErr = sticker.CreateAnimatedSticker(ctx, path, srcPath, workDir, h.cfg.StickerAnimMaxSec, h.cfg.StickerAnimMaxKB)
+		return encErr
+	}); err != nil {
 		return err
 	}
 
@@ -99,8 +131,12 @@ func (h *StickerHandler) HandleTextSticker(ctx context.Context, evt *events.Mess
 	}
 	defer os.RemoveAll(workDir)
 
-	webpData, err := sticker.CreateBratStickerWebP(ctx, zones, h.cfg.FontPath, h.cfg.FfmpegPath, workDir)
-	if err != nil {
+	var webpData []byte
+	if err := h.withFfmpeg(func(path string) error {
+		var encErr error
+		webpData, encErr = sticker.CreateBratStickerWebP(ctx, zones, h.cfg.FontPath, path, workDir)
+		return encErr
+	}); err != nil {
 		return fmt.Errorf("gagal membuat stiker teks: %w", err)
 	}
 
