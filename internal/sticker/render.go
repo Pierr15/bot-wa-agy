@@ -71,31 +71,22 @@ func RenderMemeText(baseImg image.Image, zones *TextZones, fontPath string) (ima
 
 	maxWidth := float64(StickerSize - 40) // 20px padding left/right
 
-	// Helper to draw text with black outline and white fill
+	// Draw text with the same emoji-aware meme renderer used by text-only stickers.
+	emojiFont := ""
+	for _, candidate := range emojiFontCandidates(fontPath) {
+		if err := dc.LoadFontFace(candidate, 42); err == nil {
+			emojiFont = candidate
+			break
+		}
+	}
 	drawOutlinedText := func(text string, yAnchor float64, alignY float64) {
 		lines := dc.WordWrap(text, maxWidth)
-		if len(lines) == 0 {
-			return
-		}
-
-		// Calculate total height of block
+		if len(lines) == 0 { return }
 		lineHeight := dc.FontHeight() * 1.05
 		totalHeight := float64(len(lines)) * lineHeight
 		startY := yAnchor - (totalHeight * alignY)
-
 		for i, line := range lines {
-			ly := startY + float64(i)*lineHeight
-			// Black outline (draw around offsets)
-			dc.SetRGB(0, 0, 0)
-			outlineWidth := 4.0
-			for dx := -outlineWidth; dx <= outlineWidth; dx += 2.0 {
-				for dy := -outlineWidth; dy <= outlineWidth; dy += 2.0 {
-					dc.DrawStringAnchored(line, float64(StickerSize)/2+dx, ly+dy, 0.5, 0.5)
-				}
-			}
-			// White fill
-			dc.SetRGB(1, 1, 1)
-			dc.DrawStringAnchored(line, float64(StickerSize)/2, ly, 0.5, 0.5)
+			drawOutlinedMemeLine(dc, line, float64(StickerSize)/2, startY+float64(i)*lineHeight, fontPath, emojiFont, 42)
 		}
 	}
 
