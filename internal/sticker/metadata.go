@@ -1,6 +1,8 @@
 package sticker
 
 import (
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
@@ -26,6 +28,20 @@ type riffChunk struct {
 //   - VP8X harus menjadi chunk pertama dan EXIF diletakkan setelah data gambar;
 //   - ukuran RIFF dihitung ulang.
 func EmbedWebPMetadata(data []byte, packName, author string) ([]byte, error) {
+	return embedWebPMetadata(data, packName, author, "")
+}
+
+// EmbedWebPMetadataWithAudio adds the SHA-256 link used by WhatsApp to pair
+// the animated WebP sticker with its separate Ogg/Opus audio attachment.
+func EmbedWebPMetadataWithAudio(data []byte, packName, author string, audio []byte) ([]byte, error) {
+	if len(audio) == 0 {
+		return nil, fmt.Errorf("audio stiker kosong")
+	}
+	hash := sha256.Sum256(audio)
+	return embedWebPMetadata(data, packName, author, base64.StdEncoding.EncodeToString(hash[:]))
+}
+
+func embedWebPMetadata(data []byte, packName, author, soundSHA256 string) ([]byte, error) {
 	if !IsValidWebP(data) {
 		return nil, fmt.Errorf("data bukan WebP yang valid")
 	}
@@ -68,7 +84,7 @@ func EmbedWebPMetadata(data []byte, packName, author string) ([]byte, error) {
 		chunks = append([]riffChunk{vp8x}, chunks...)
 	}
 
-	chunks = append(chunks, riffChunk{id: "EXIF", payload: buildTIFFMetadata(packName, author)})
+	chunks = append(chunks, riffChunk{id: "EXIF", payload: buildTIFFMetadata(packName, author, soundSHA256)})
 
 	out := make([]byte, 12, len(data)+256)
 	copy(out[0:4], "RIFF")
@@ -161,13 +177,17 @@ func putUint24(b []byte, v uint32) {
 // WhatsApp: header TIFF little-endian, satu entri IFD bertag 0x5741 (tipe
 // UNDEFINED) yang berisi JSON. Tidak ada prefix "Exif\0\0" karena itu hanya
 // untuk JPEG; di dalam chunk EXIF WebP payload langsung diawali header TIFF.
-func buildTIFFMetadata(packName, author string) []byte {
-	payload, _ := json.Marshal(map[string]interface{}{
+func buildTIFFMetadata(packName, author, soundSHA256 string) []byte {
+	metadata := map[string]interface{}{
 		"sticker-pack-id":        "bot-wa-agy",
 		"sticker-pack-name":      packName,
 		"sticker-pack-publisher": author,
 		"emojis":                 []string{},
-	})
+	}
+	if soundSHA256 != "" {
+		metadata["sound-sha256"] = soundSHA256
+	}
+	payload, _ := json.Marshal(metadata)
 
 	// Header TIFF (8) + jumlah entri (2) + satu entri (12) = 22 byte.
 	const dataOffset = 8 + 2 + 12
