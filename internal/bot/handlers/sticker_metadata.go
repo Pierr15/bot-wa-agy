@@ -113,7 +113,7 @@ func parseStickerMetadata(raw string) (StickerMetadata, error) {
 	return value, nil
 }
 
-func (h *StickerHandler) applyStickerMetadata(chat string, data []byte) ([]byte, StickerMetadata, error) {
+func (h *StickerHandler) stickerMetadataForChat(chat string) (StickerMetadata, error) {
 	h.metadataMu.Lock()
 	value, ok := h.pendingMetadata[chat]
 	if ok {
@@ -121,13 +121,29 @@ func (h *StickerHandler) applyStickerMetadata(chat string, data []byte) ([]byte,
 	}
 	h.metadataMu.Unlock()
 	if !ok {
-		var err error
-		value, err = h.loadStickerDefaults()
-		if err != nil {
-			return nil, StickerMetadata{}, err
-		}
+		return h.loadStickerDefaults()
+	}
+	return value, nil
+}
+
+func (h *StickerHandler) applyStickerMetadata(chat string, data []byte) ([]byte, StickerMetadata, error) {
+	value, err := h.stickerMetadataForChat(chat)
+	if err != nil {
+		return nil, StickerMetadata{}, err
 	}
 	embedded, err := sticker.EmbedWebPMetadata(data, value.PackName, value.Author)
+	if err != nil {
+		return nil, StickerMetadata{}, err
+	}
+	return embedded, value, nil
+}
+
+func (h *StickerHandler) applyAudioStickerMetadata(chat string, data, audio []byte) ([]byte, StickerMetadata, error) {
+	value, err := h.stickerMetadataForChat(chat)
+	if err != nil {
+		return nil, StickerMetadata{}, err
+	}
+	embedded, err := sticker.EmbedWebPMetadataWithAudio(data, value.PackName, value.Author, audio)
 	if err != nil {
 		return nil, StickerMetadata{}, err
 	}
