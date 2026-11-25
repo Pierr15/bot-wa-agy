@@ -13,7 +13,8 @@ Dirancang khusus untuk berjalan stabil 24/7 di **HP Android (Termux)** dengan ko
   - Teks atas/bawah/tengah via pipe (`.s TEKS BAWAH | TEKS ATAS`) atau prefix (`.s atas: ...`, `.s bawah: ...`).
   - `.st TEKS` → Stiker teks minimalis bergaya Brat: teks hitam lowercase, rata tengah, latar putih.
   - Video/GIF + `.s` → Stiker animasi WebP (maks 6 detik, ≤300 KB) dengan pipeline FFmpeg 2-pass cepat (hemat CPU/baterai).
-  - Reply foto/video yang sudah terkirim dengan `.s` untuk memprosesnya.
+  - Video + `.saudio` → Audio sticker: animasi WebP dengan audio Ogg/Opus terpisah dalam satu pesan (maks 7 detik).
+  - Reply foto/video yang sudah terkirim dengan `.s`, atau reply video dengan `.saudio` untuk membuat audio sticker.
 - **Downloader TikTok & Instagram**:
   - Download video/foto tanpa watermark via `yt-dlp` + fallback `TikWM`.
   - Carousel foto Instagram / slideshow foto TikTok otomatis dikirim berurutan.
@@ -29,6 +30,8 @@ Dirancang khusus untuk berjalan stabil 24/7 di **HP Android (Termux)** dengan ko
   - **Auto-clean**: Pembersihan berkala otomatis untuk file sementara di `data/tmp`.
 
 ---
+
+Catatan: audio sticker dikirim sebagai satu pesan yang berisi animasi dan audio terpisah. Dukungan pemutaran bergantung pada versi WhatsApp penerima dan ketersediaan fitur sound sticker pada akun; pada akun yang belum mendukungnya, media dapat tampil sebagai stiker biasa tanpa suara.
 
 ## 📋 Kebutuhan Sistem
 
@@ -121,6 +124,7 @@ tail -f ~/.local/share/wa-bot/log/current   # Pantau log secara realtime
 | Perintah | Fungsi |
 | :--- | :--- |
 | `.s [TEKS]` | Buat stiker dari foto/video (bawah / `\|` atas / dua zona) |
+| `.saudio` | Buat audio sticker dari video yang memiliki audio (maksimal 7 detik) |
 | `.st <TEKS>` | Buat stiker teks minimalis gaya Brat berlatar putih |
 | `.wm Nama Paket\|Author` | Atur metadata untuk stiker berikutnya di chat ini |
 | `.wm info` | Tampilkan metadata aktif dan default |
