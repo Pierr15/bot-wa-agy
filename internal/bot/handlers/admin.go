@@ -47,10 +47,11 @@ func (h *AdminHandler) BuildMenu(isOwner bool) string {
 	sb.WriteString("› `.s | TEKS` → teks atas\n")
 	sb.WriteString("› `.s BAWAH | ATAS` → teks dua zona\n")
 	sb.WriteString("› Video/GIF + caption `.s` → stiker animasi (maks. " + fmt.Sprintf("%.0f", h.cfg.StickerAnimMaxSec) + " detik)\n")
+	sb.WriteString("› Video + caption `.saudio` → stiker animasi dengan suara (maks. 7 detik)\n")
 	sb.WriteString("› `.st TEKS` → stiker teks Brat berlatar putih\n")
 	sb.WriteString("› `.wm Nama Paket|Author` → metadata stiker berikutnya\n")
 	sb.WriteString("› `.wm info` → lihat metadata saat ini dan default\n")
-	sb.WriteString("💡 _Bisa juga reply foto/video dengan `.s`._\n\n")
+	sb.WriteString("💡 _Reply foto/video dengan `.s`, atau reply video dengan `.saudio`._\n\n")
 
 	sb.WriteString("📥 *MEDIA DOWNLOADER*\n")
 	sb.WriteString("› Kirim link TikTok / Instagram (post, reel, atau carousel)\n")
