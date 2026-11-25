@@ -158,7 +158,9 @@ func (r *Router) HandleMessage(evt *events.Message) {
 
 	// 1. Direct Image Message with Caption
 	if msg.ImageMessage != nil {
-		if isStickerCmd(cleanText) {
+		if isAudioStickerCmd(cleanText) {
+			r.reply(ctx, chat, "`.saudio` membutuhkan video yang memiliki audio. Kirim video dengan caption `.saudio` atau reply video menggunakan command tersebut.")
+		} else if isStickerCmd(cleanText) {
 			caption := extractCaptionArgs(cleanText)
 			r.sticker.React(ctx, chat, sender, msgID, "⏳")
 			if err := r.sticker.HandleImageSticker(ctx, evt, msg.ImageMessage, caption); err != nil {
@@ -175,7 +177,15 @@ func (r *Router) HandleMessage(evt *events.Message) {
 
 	// 2. Direct Video Message with Caption
 	if msg.VideoMessage != nil {
-		if isStickerCmd(cleanText) {
+		if isAudioStickerCmd(cleanText) {
+			r.sticker.React(ctx, chat, sender, msgID, "⏳")
+			if err := r.sticker.HandleAudioSticker(ctx, evt, msg.VideoMessage); err != nil {
+				r.sticker.React(ctx, chat, sender, msgID, "❌")
+				r.reply(ctx, chat, "Gagal membuat audio stiker: "+err.Error())
+			} else {
+				r.sticker.React(ctx, chat, sender, msgID, "✅")
+			}
+		} else if isStickerCmd(cleanText) {
 			r.sticker.React(ctx, chat, sender, msgID, "⏳")
 			if err := r.sticker.HandleVideoSticker(ctx, evt, msg.VideoMessage); err != nil {
 				r.sticker.React(ctx, chat, sender, msgID, "❌")
@@ -293,6 +303,21 @@ func (r *Router) handleCommand(ctx context.Context, evt *events.Message, cmd, ar
 		default:
 			r.reply(ctx, chat, "Format: .token create | .token list | .token revoke ID")
 		}
+
+	case "saudio":
+		quoted := getQuotedMessage(evt.Message)
+		if quoted != nil && quoted.VideoMessage != nil {
+			r.sticker.React(ctx, chat, sender, msgID, "⏳")
+			if err := r.sticker.HandleAudioSticker(ctx, evt, quoted.VideoMessage); err != nil {
+				r.sticker.React(ctx, chat, sender, msgID, "❌")
+				r.reply(ctx, chat, "Gagal membuat audio stiker: "+err.Error())
+			} else {
+				r.sticker.React(ctx, chat, sender, msgID, "✅")
+			}
+			return
+		}
+		r.reply(ctx, chat, "Kirim video yang memiliki audio dengan caption `.saudio` atau reply video tersebut menggunakan `.saudio`. Durasi audio maksimal 7 detik.")
+		return
 
 	case "s", "stiker", "sticker":
 		quoted := getQuotedMessage(evt.Message)
@@ -439,6 +464,14 @@ func (r *Router) reply(ctx context.Context, chat types.JID, text string) {
 	if err != nil {
 		log.Warn().Str("err", err.Error()).Msg("Gagal mengirim balasan teks")
 	}
+}
+
+func isAudioStickerCmd(caption string) bool {
+	if !strings.HasPrefix(caption, ".") {
+		return false
+	}
+	cmd, _ := parseCommand(caption)
+	return cmd == "saudio"
 }
 
 func isStickerCmd(caption string) bool {
