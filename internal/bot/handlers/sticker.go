@@ -150,13 +150,7 @@ func (h *StickerHandler) HandleAudioSticker(ctx context.Context, evt *events.Mes
 		return fmt.Errorf("video tidak memiliki audio. Kirim video yang mempunyai suara")
 	}
 
-	maxSeconds := h.cfg.StickerAnimMaxSec
-	if maxSeconds <= 0 {
-		return fmt.Errorf("STICKER_ANIM_MAX_SEC harus lebih dari 0")
-	}
-	if maxSeconds > sticker.AudioStickerMaxSeconds {
-		maxSeconds = sticker.AudioStickerMaxSeconds
-	}
+	maxSeconds := float64(sticker.AudioStickerMaxSeconds)
 
 	audioPath := sticker.AudioStickerOutputPath(workDir)
 	var audioData []byte
@@ -175,15 +169,16 @@ func (h *StickerHandler) HandleAudioSticker(ctx context.Context, evt *events.Mes
 	if !audioInfo.HasAudio || audioInfo.DurationSec < 1 {
 		return fmt.Errorf("audio video terlalu pendek untuk dijadikan stiker suara (minimal 1 detik)")
 	}
-	if audioInfo.DurationSec > sticker.AudioStickerMaxSeconds {
+	if audioInfo.DurationSec > float64(sticker.AudioStickerMaxSeconds)+0.1 {
 		return fmt.Errorf("durasi audio melewati batas %d detik", sticker.AudioStickerMaxSeconds)
 	}
+	stickerDuration := math.Min(audioInfo.DurationSec, float64(sticker.AudioStickerMaxSeconds))
 
 	var webpData []byte
 	if err := h.withFfmpeg(func(path string) error {
 		var encodeErr error
 		webpData, encodeErr = sticker.CreateAnimatedSticker(
-			ctx, path, srcPath, workDir, audioInfo.DurationSec, h.cfg.StickerAnimMaxKB,
+			ctx, path, srcPath, workDir, stickerDuration, h.cfg.StickerAnimMaxKB,
 		)
 		return encodeErr
 	}); err != nil {
@@ -193,7 +188,7 @@ func (h *StickerHandler) HandleAudioSticker(ctx context.Context, evt *events.Mes
 		return fmt.Errorf("hasil WebP stiker suara melebihi batas ukuran WhatsApp (%d KB)", sticker.AudioStickerMaxWebPBytes/1024)
 	}
 
-	seconds := uint32(math.Ceil(audioInfo.DurationSec))
+	seconds := uint32(math.Ceil(stickerDuration))
 	if seconds < 1 {
 		seconds = 1
 	}
