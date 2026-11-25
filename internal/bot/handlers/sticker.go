@@ -318,7 +318,8 @@ func (h *StickerHandler) SendHint(ctx context.Context, chat types.JID) {
 		"• `.s TEKS` : stiker teks di bawah\n" +
 		"• `.s | TEKS` : stiker teks di atas\n" +
 		"• `.s BAWAH | ATAS` : teks dua zona\n" +
-		"• Video/GIF + `.s` : stiker animasi (maks 6 detik)"
+		"• Video/GIF + `.s` : stiker animasi (maks 6 detik)\n" +
+		"• Video + `.saudio` : stiker animasi dengan suara (maks 7 detik)"
 
 	_, _ = h.client.SendMessage(ctx, chat, &waProto.Message{
 		Conversation: proto.String(hint),
